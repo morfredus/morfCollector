@@ -7,6 +7,13 @@ et du [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- **Rendez-vous de collecte quotidien (`schedule.daily_at`).** Le manifeste peut
+  demander une collecte **une fois par jour à une heure locale** (`"HH:MM"`, ex.
+  `"02:00"`) en plus de l'intervalle `every_minutes` existant. L'ordonnanceur
+  déclenche la collecte à l'heure dite ou, si la machine était éteinte, au
+  démarrage suivant (rattrapage, une seule fois par jour). Ajout additif : `proto`
+  reste `morfcollect/1`.
+
 - **Contrat `morfcollect/1` gelé** (`docs/fr/CONTRAT.md`) : le protocole fonctionnel
   fournisseur ↔ morfCollector, à respecter avant toute implémentation métier.
   Fige le manifeste (`manifest_generation` + `revision`, `source_id` UUID stable),

@@ -105,8 +105,22 @@ Document JSON unique, poussé par le fournisseur (voir [§6](#6-lapi-http)).
 | `connector` | object | `{ name, version }` du connecteur. Détermine l'interprétation de `params` et des secrets (voir [§2](#2-le-contrat-de-connecteur)). |
 | `params` | object | Paramètres **propres au connecteur**. Opaques pour le cœur générique. |
 | `credentials_ref` | string | Référence vers les secrets stockés dans le coffre de morfCollector (voir §1.5). |
-| `schedule` | object | Cadence de collecte souhaitée. |
+| `schedule` | object | Cadence de collecte souhaitée (voir §1.2.1). |
 | `retention` | object | Politique de conservation souhaitée (voir §5.4). |
+
+### 1.2.1 Cadence (`schedule`)
+
+Le champ `schedule` décrit **quand** collecter. Deux formes, au choix :
+
+| Forme | Signification |
+|---|---|
+| `{ "daily_at": "HH:MM" }` | une fois par jour, à l'heure locale indiquée (ex. `"02:00"`). Si la machine était éteinte à l'heure dite, la collecte a lieu au démarrage suivant (rattrapage), une seule fois dans la journée. |
+| `{ "every_minutes": N }` | à intervalle régulier de N minutes. |
+
+`daily_at` a la priorité s'il est présent. Ces formes sont additives : un
+`schedule` peut s'enrichir plus tard d'autres clés optionnelles sans changer
+`proto` (voir §1.6). Une source sans `schedule` exploitable n'est collectée que
+sur demande explicite (`POST /sources/{id}/collect`).
 
 **Règle de tolérance.** Un lecteur ignore toute clé qu'il ne connaît pas ; un
 producteur qui ne renseigne pas une clé optionnelle ne l'émet pas. C'est la base

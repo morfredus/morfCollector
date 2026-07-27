@@ -14,6 +14,7 @@
 
 #include <QTimer>
 #include <QDateTime>
+#include <QTime>
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 #include <QFutureWatcher>
@@ -280,14 +281,29 @@ void Collector::startCollection(Source* s) {
 }
 
 void Collector::onSchedulerTick() {
-    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    const QDateTime nowDt = QDateTime::currentDateTime();
+    const qint64    now   = nowDt.toSecsSinceEpoch();
     for (Source* s : m_sources.all()) {
         if (s->adminState() != AdminState::Active)
             continue;
-        const int minutes = s->scheduleMinutes();
-        if (minutes <= 0)
+
+        // Priorite au rendez-vous quotidien "HH:MM" (heure locale) s'il est
+        // declare. Collecte une fois par jour, a l'heure cible ou apres (rattrapage
+        // si la machine etait eteinte a l'heure dite).
+        const QString dailyAt = s->scheduleDailyAt();
+        if (!dailyAt.isEmpty()) {
+            const QTime t = QTime::fromString(dailyAt, QStringLiteral("HH:mm"));
+            if (!t.isValid())
+                continue;
+            const QDateTime target(nowDt.date(), t);
+            if (nowDt >= target && s->lastCollectTs() < target.toSecsSinceEpoch())
+                startCollection(s);
             continue;
-        if (now - s->lastCollectTs() >= static_cast<qint64>(minutes) * 60)
+        }
+
+        // Sinon, intervalle simple.
+        const int minutes = s->scheduleMinutes();
+        if (minutes > 0 && now - s->lastCollectTs() >= static_cast<qint64>(minutes) * 60)
             startCollection(s);
     }
 }
