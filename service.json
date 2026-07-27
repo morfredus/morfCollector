@@ -1,0 +1,28 @@
+{
+  "_comment": "Deployment facts for this project, read by morfdeploy. The four install steps live in one place for the whole parc; this file states only what is specific to this service. Adding a platform never touches this file.",
+  "service_name": "morfcollector",
+  "display_name": "morfCollector",
+  "description": "Collecte et conservation locale de ressources distantes temporaires (morfSystem)",
+  "binary": "morfcollector",
+  "_comment_app_dir": "Where the binary and configurations are installed, per platform. Overridden by the MORF_APP_DIR environment variable, which replaces the per-project prefixes (MT_, MN_, MS_) that had already drifted apart.",
+  "app_dir": {
+    "linux": "/opt/morfcollector",
+    "windows": "%ProgramData%/morfcollector"
+  },
+  "_comment_configs": "Copied at install. 'overwrite' is false by default because these hold settings edited by hand on the machine. An absolute destination is honoured as-is, which is how the shared parc configuration reaches /etc/morfsystem.",
+  "configs": [
+    {
+      "source": "config/morfcollector.example.json",
+      "dest": "morfcollector.json",
+      "migrate_from": [
+        "/opt/morfcollector/morfcollector.json"
+      ]
+    }
+  ],
+  "status_url": "http://127.0.0.1:8792/status",
+  "_comment_config_dir": "La configuration vit dans /etc, pas a cote du binaire : c'est ou un administrateur Linux regarde en premier, et la FHS est explicite la-dessus. Effacer /opt/<service> pour reinstaller proprement n'emporte donc plus les reglages.",
+  "config_dir": {
+    "linux": "/etc/morfcollector",
+    "windows": "%ProgramData%/morfcollector"
+  }
+}
