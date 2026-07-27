@@ -23,9 +23,16 @@ struct ServiceConfig {
     QString appName    = QStringLiteral("morfCollector");
     QString instanceId;                              // defaut = appName@hostname
 
-    // Racine locale ou seront conserves les objets collectes et l'index (plan de
-    // donnees a venir). Vide => defaut choisi a l'execution.
+    // Racine des DONNEES metier : objets collectes + index, source de verite du
+    // service (docs/FILESYSTEM.md). Vide => <app_dir>/data choisi a l'execution
+    // (/opt/morfcollector/data sous Linux).
     QString storageRoot;
+
+    // Racine du COFFRE de secrets (vault.enc + vault.key). Volontairement SEPAREE
+    // des donnees : copier le dossier data/ ne doit jamais emporter la cle. Vide
+    // => dossier de configuration (/etc/morfcollector sous Linux), la ou vivent
+    // deja les secrets de la machine.
+    QString vaultRoot;
 
     // Port de service morfCollector (bloc de service 8787-8799), reserve dans
     // 'ports.allocations' de morfTools/ecosystem.json. C'est le defaut COMPILE :
@@ -47,6 +54,7 @@ struct ServiceConfig {
         if (root.contains("http_port"))    c.httpPort    = static_cast<quint16>(root.value("http_port").toInt(c.httpPort));
         if (root.contains("bind_address")) c.bindAddress = root.value("bind_address").toString(c.bindAddress);
         if (root.contains("storage_root")) c.storageRoot = root.value("storage_root").toString(c.storageRoot);
+        if (root.contains("vault_root"))   c.vaultRoot   = root.value("vault_root").toString(c.vaultRoot);
 
         const QJsonObject beacon = root.value("beacon").toObject();
         if (beacon.contains("enabled"))     c.beaconEnabled    = beacon.value("enabled").toBool(c.beaconEnabled);

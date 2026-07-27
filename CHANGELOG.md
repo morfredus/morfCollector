@@ -5,7 +5,18 @@ et du [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
-## [0.2.0] - 2026-07-27
+### Modifié
+
+- **Rangement des données conforme à la convention morfSystem** (`docs/FILESYSTEM.md`).
+  Les objets collectés et l'index vivent désormais sous `<app_dir>/data`
+  (`/opt/morfcollector/data` sous Linux) au lieu d'un dossier applicatif à plat.
+  Le **coffre de secrets** (`vault.enc` + `vault.key`) est déplacé dans le dossier
+  de configuration (`/etc/morfcollector`), **séparé des données** : copier ou
+  sauvegarder `data/` n'emporte plus jamais la clé, et le chiffrement au repos
+  garde son sens. Deux réglages facultatifs : `storage_root` (données) et
+  `vault_root` (coffre). La disposition disque restait un détail d'implémentation
+  (hors contrat) : `morfcollect/1` est inchangé, les consommateurs ne voient
+  aucune différence (accès par l'API HTTP).
 
 ### Ajouté
 

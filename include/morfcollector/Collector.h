@@ -36,7 +36,10 @@ class IConnector;
 class Collector : public QObject, public morfbeacon::IMetricsProvider {
     Q_OBJECT
 public:
-    explicit Collector(QString storageRoot, QObject* parent = nullptr);
+    // dataRoot  : objets collectes + index (source de verite).
+    // vaultRoot : coffre de secrets, distinct de dataRoot (la cle ne doit jamais
+    //             voyager avec une copie des donnees).
+    explicit Collector(QString dataRoot, QString vaultRoot, QObject* parent = nullptr);
     ~Collector() override;
 
     // --- Manifeste (CONTRAT.md §4) ------------------------------------------

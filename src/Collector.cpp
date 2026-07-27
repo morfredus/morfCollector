@@ -77,10 +77,10 @@ CollectResult runJob(IConnector* connector, const QJsonObject& params,
 }
 } // namespace
 
-Collector::Collector(QString storageRoot, QObject* parent)
+Collector::Collector(QString dataRoot, QString vaultRoot, QObject* parent)
     : QObject(parent),
-      m_store(storageRoot),
-      m_vault(storageRoot) {
+      m_store(std::move(dataRoot)),
+      m_vault(std::move(vaultRoot)) {
     m_store.init();
     m_vault.init();
 

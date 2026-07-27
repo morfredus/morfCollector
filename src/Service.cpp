@@ -13,27 +13,54 @@
 #include "morfbeacon/PresenceConfig.h"
 
 #include <QDir>
-#include <QStandardPaths>
 #include <utility>
 
 namespace morfcollector {
 
 namespace {
-// Racine de conservation : celle de la config, sinon un defaut par plateforme.
-QString resolveStorageRoot(const QString& configured) {
+// Repertoires par defaut du service, alignes sur service.json (docs/FILESYSTEM.md).
+// Sous Linux : donnees dans /opt/morfcollector/data, configuration (et coffre)
+// dans /etc/morfcollector. Sous Windows, faute de /etc, tout vit sous
+// %ProgramData%\morfcollector (sous-dossiers data/ et config/).
+QString appDir() {
+#if defined(Q_OS_WIN)
+    const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
+    return QDir(base).filePath(QStringLiteral("morfcollector"));
+#else
+    return QStringLiteral("/opt/morfcollector");
+#endif
+}
+
+QString configDir() {
+#if defined(Q_OS_WIN)
+    const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
+    return QDir(base).filePath(QStringLiteral("morfcollector/config"));
+#else
+    return QStringLiteral("/etc/morfcollector");
+#endif
+}
+
+// Donnees metier (objets + index) : <app_dir>/data. Ecrasable par 'storage_root'.
+QString resolveDataRoot(const QString& configured) {
     if (!configured.isEmpty())
         return configured;
-    const QString base = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (!base.isEmpty())
-        return QDir(base).filePath(QStringLiteral("morfcollector-data"));
-    return QDir::current().filePath(QStringLiteral("morfcollector-data"));
+    return QDir(appDir()).filePath(QStringLiteral("data"));
+}
+
+// Coffre de secrets : dossier de configuration, distinct des donnees pour que
+// copier data/ n'emporte jamais la cle. Ecrasable par 'vault_root'.
+QString resolveVaultRoot(const QString& configured) {
+    if (!configured.isEmpty())
+        return configured;
+    return configDir();
 }
 } // namespace
 
 Service::Service(ServiceConfig config, QObject* parent)
     : QObject(parent),
       m_config(std::move(config)),
-      m_collector(new Collector(resolveStorageRoot(m_config.storageRoot), this)),
+      m_collector(new Collector(resolveDataRoot(m_config.storageRoot),
+                                resolveVaultRoot(m_config.vaultRoot), this)),
       m_http(new HttpServer(m_config, m_collector, this)) {}
 
 Service::~Service() = default;
