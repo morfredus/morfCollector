@@ -5,6 +5,8 @@ et du [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [0.2.0] - 2026-07-27
+
 ### Ajouté
 
 - **Rendez-vous de collecte quotidien (`schedule.daily_at`).** Le manifeste peut
