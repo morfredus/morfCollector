@@ -108,6 +108,15 @@ int main(int argc, char** argv) {
     out() << "morfCollector v" << morfcollector::version() << " demarre : API http://"
           << config.bindAddress << ':' << service.httpPort()
           << "/  (POST /manifest ; GET /sources /status /healthz)\n";
+
+    // Coffre indisponible = aucune source ne pourra s'authentifier (toutes
+    // resteront auth_failed). Le signaler tot, sinon le probleme ne se voit qu'a
+    // la premiere collecte. Cause typique : 'vault_root' pointe un dossier non
+    // accessible en ecriture au user du service.
+    if (!service.vaultReady()) {
+        err() << "ATTENTION : coffre de secrets indisponible (verifier 'vault_root' "
+                 "et les droits d'ecriture). Les remises de secrets echoueront.\n";
+    }
     out().flush();
 
     return app.exec();

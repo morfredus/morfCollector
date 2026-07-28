@@ -51,6 +51,11 @@ public:
     int         size() const { return m_secrets.size(); }
     QStringList refs() const { return m_secrets.keys(); }
 
+    // true si le coffre est operationnel (cle chargee/generee). false = coffre
+    // indisponible (dossier non accessible en ecriture, chiffrement absent) :
+    // toute remise de secret echouera tant que ce n'est pas corrige.
+    bool        ready() const { return m_ready; }
+
 private:
     bool loadKey();
     bool load();     // dechiffre vault.enc -> m_secrets

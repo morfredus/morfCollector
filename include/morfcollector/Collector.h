@@ -65,6 +65,10 @@ public:
     // --- Coffre de secrets (CONTRAT.md §1.5) --------------------------------
     bool storeCredentials(const QString& ref, const QJsonObject& secret);
 
+    // true si le coffre est operationnel. false = coffre indisponible (dossier
+    // non accessible en ecriture) : aucune remise de secret ne peut aboutir.
+    bool vaultReady() const { return m_vault.ready(); }
+
     // --- Capacites annoncees (CONTRAT.md §7.2) ------------------------------
     QStringList capabilities() const;
 

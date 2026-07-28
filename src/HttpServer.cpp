@@ -193,8 +193,20 @@ QByteArray HttpServer::route(const QByteArray& method, const QString& path,
         if (!parseJsonObject(body, root)) { set(400, "Bad Request"); return errorBody("corps JSON invalide"); }
         const QString ref = root.value("ref").toString();
         const QJsonObject secret = root.value("secret").toObject();
-        if (!m_collector->storeCredentials(ref, secret)) {
+        // Coffre indisponible (dossier non accessible en ecriture, chiffrement
+        // absent) : distinguer d'une requete mal formee pour ne pas masquer un
+        // probleme de deploiement derriere un 400 trompeur.
+        if (!m_collector->vaultReady()) {
+            set(503, "Service Unavailable");
+            return errorBody("coffre de secrets indisponible : verifier 'vault_root' "
+                             "et les droits d'ecriture du service");
+        }
+        if (ref.isEmpty() || secret.isEmpty()) {
             set(400, "Bad Request"); return errorBody("'ref' et 'secret' requis");
+        }
+        if (!m_collector->storeCredentials(ref, secret)) {
+            set(500, "Internal Server Error");
+            return errorBody("ecriture du secret impossible");
         }
         set(204, "No Content");
         return QByteArray();
