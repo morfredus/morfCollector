@@ -3,6 +3,33 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.4.0] - 2026-07-28
+
+### Modifié
+
+- **État persistant déplacé sous `/var/lib/morfsystem/morfcollector`** (doctrine
+  du parc, voir `docs/fr/FILESYSTEM.md`). Les données collectées (`data/`) et le
+  coffre chiffré (`vault/`) ne vivent plus sous `/opt/<service>/data` ni sous
+  `/etc/morfsystem/<service>` : ils sont désormais de l'**état**, distinct de la
+  config admin (`/etc`, lecture seule) et du programme (`/opt`). L'unité systemd
+  déclare `StateDirectory=morfsystem/morfcollector` : systemd crée le dossier
+  possédé par l'utilisateur du service et l'expose via `$STATE_DIRECTORY`. Le
+  coffre et les données restent des sous-dossiers séparés (`vault/` et `data/`)
+  pour qu'une sauvegarde de `data/` n'emporte jamais la clé.
+
+### Corrigé
+
+- **Coffre inécrivable non signalé.** Quand le dossier du coffre n'était pas
+  accessible en écriture (cas d'un `/etc/morfsystem/<service>` appartenant à
+  `root` alors que le service tourne sous son propre utilisateur), `POST
+  /credentials` répondait un `400` trompeur (« 'ref' et 'secret' requis ») alors
+  que le vrai problème était l'échec silencieux de l'initialisation du coffre.
+  Désormais : `POST /credentials` répond **`503`** avec un message clair quand le
+  coffre est indisponible, distinct du `400` d'une requête mal formée, et le
+  service **journalise un avertissement au démarrage** si le coffre n'est pas
+  opérationnel. La racine du problème est traitée par le déplacement de l'état
+  ci-dessus.
+
 ## [0.3.0] - 2026-07-28
 
 ### Modifié

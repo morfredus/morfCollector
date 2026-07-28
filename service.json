@@ -25,5 +25,10 @@
   "config_dir": {
     "linux": "/etc/morfsystem/morfcollector",
     "windows": "%ProgramData%/morfsystem/morfcollector"
+  },
+  "_comment_state_dir": "ETAT PERSISTANT (docs/FILESYSTEM.md) : donnees collectees (data/) et coffre chiffre (vault/) sous /var/lib/morfsystem/morfcollector, distinct de la config (/etc, admin) et du programme (/opt). L'unite declare StateDirectory=morfsystem/morfcollector : systemd cree ce dossier possede par le user du service. Le coffre n'est PLUS dans /etc (c'est de l'etat genere, pas de la config). 'storage_root'/'vault_root' dans la config permettent de surcharger data/ et vault/ separement.",
+  "state_dir": {
+    "linux": "/var/lib/morfsystem/morfcollector",
+    "windows": "%ProgramData%/morfsystem/morfcollector/state"
   }
 }

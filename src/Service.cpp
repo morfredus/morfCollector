@@ -19,42 +19,46 @@ namespace morfcollector {
 
 namespace {
 // Repertoires par defaut du service, alignes sur service.json (docs/FILESYSTEM.md).
-// Sous Linux : donnees dans /opt/morfcollector/data, configuration (et coffre)
-// dans /etc/morfsystem/morfcollector -- tout le parc partage un point d'entree
-// UNIQUE sous /etc/morfsystem. Sous Windows, meme logique sous
-// %ProgramData%\morfsystem\morfcollector (les donnees restent sous
-// %ProgramData%\morfcollector\data).
-QString appDir() {
+// Trois zones distinctes : le PROGRAMME dans /opt/morfcollector, la CONFIG ADMIN
+// (lecture seule) dans /etc/morfsystem/morfcollector, et tout l'ETAT PERSISTANT
+// (donnees collectees + coffre) dans /var/lib/morfsystem/morfcollector. Le coffre
+// et les donnees restent des sous-dossiers SEPARES de l'etat (vault/ et data/),
+// pour que copier/sauvegarder data/ n'emporte jamais la cle (CONTRAT.md §1.5).
+// Racine de l'ETAT PERSISTANT, garantie accessible en ecriture. Honore
+// $STATE_DIRECTORY pose par systemd (StateDirectory=morfsystem/morfcollector) ;
+// repli conforme a l'OS sinon. C'est la reponse structurelle au probleme de
+// droits qui rendait le coffre inecrivable sous un /etc appartenant a root.
+QString stateDir() {
+    const QByteArray env = qgetenv("STATE_DIRECTORY");
+    if (!env.isEmpty()) {
+        const QString first = QString::fromLocal8Bit(env).split(QLatin1Char(':')).first();
+        if (!first.isEmpty()) { QDir().mkpath(first); return first; }
+    }
 #if defined(Q_OS_WIN)
     const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
-    return QDir(base).filePath(QStringLiteral("morfcollector"));
+    const QString dir  = QDir(base).filePath(QStringLiteral("morfsystem/morfcollector/state"));
 #else
-    return QStringLiteral("/opt/morfcollector");
+    const QString dir  = QStringLiteral("/var/lib/morfsystem/morfcollector");
 #endif
+    QDir().mkpath(dir);
+    return dir;
 }
 
-QString configDir() {
-#if defined(Q_OS_WIN)
-    const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
-    return QDir(base).filePath(QStringLiteral("morfsystem/morfcollector"));
-#else
-    return QStringLiteral("/etc/morfsystem/morfcollector");
-#endif
-}
-
-// Donnees metier (objets + index) : <app_dir>/data. Ecrasable par 'storage_root'.
+// Donnees metier (objets + index) : <etat>/data. Ecrasable par 'storage_root'.
 QString resolveDataRoot(const QString& configured) {
     if (!configured.isEmpty())
         return configured;
-    return QDir(appDir()).filePath(QStringLiteral("data"));
+    return QDir(stateDir()).filePath(QStringLiteral("data"));
 }
 
-// Coffre de secrets : dossier de configuration, distinct des donnees pour que
-// copier data/ n'emporte jamais la cle. Ecrasable par 'vault_root'.
+// Coffre de secrets : <etat>/vault, sous-dossier SEPARE des donnees pour que
+// copier data/ n'emporte jamais la cle (CONTRAT.md §1.5). Ecrasable par
+// 'vault_root'. N'est PLUS dans /etc : le coffre est de l'etat genere par le
+// service (cle + secrets chiffres), pas de la config admin.
 QString resolveVaultRoot(const QString& configured) {
     if (!configured.isEmpty())
         return configured;
-    return configDir();
+    return QDir(stateDir()).filePath(QStringLiteral("vault"));
 }
 } // namespace
 

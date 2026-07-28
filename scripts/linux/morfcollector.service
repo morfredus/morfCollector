@@ -1,12 +1,17 @@
 # Service systemd pour morfCollector.
 #
-# Le binaire et sa configuration sont INSTALLES dans un dossier fixe (par defaut
-# /opt/morfcollector), independant du clone git : deplacer/renommer le depot (ou une
-# synchro Syncthing) ne casse pas le service. install-service.sh remplace
-# __RUN_USER__ et __APP_DIR__.
+# Le binaire est INSTALLE dans un dossier fixe (par defaut /opt/morfcollector),
+# independant du clone git. morfdeploy remplace __RUN_USER__, __APP_DIR__ et
+# __CONFIG_DIR__.
+#
+# Trois zones (docs/FILESYSTEM.md) : PROGRAMME dans /opt, CONFIG ADMIN (lecture
+# seule) dans /etc, ETAT PERSISTANT (donnees collectees + coffre chiffre) dans
+# /var/lib. StateDirectory= fait creer ce dernier par systemd, possede par User=
+# et accessible en ecriture, puis l'expose via $STATE_DIRECTORY. C'est ce qui
+# corrige a la racine le coffre inecrivable qui laissait les sources en auth_failed.
 
 [Unit]
-Description=morfCollector — service morfSystem (a adapter)
+Description=morfCollector — service morfSystem
 After=local-fs.target network-online.target
 Wants=network-online.target
 
@@ -15,6 +20,9 @@ Type=simple
 User=__RUN_USER__
 Group=__RUN_USER__
 WorkingDirectory=__APP_DIR__
+# Cree et possede /var/lib/morfsystem/morfcollector ; expose $STATE_DIRECTORY.
+# Le service y range data/ (objets + index) et vault/ (coffre chiffre).
+StateDirectory=morfsystem/morfcollector
 ExecStart=__APP_DIR__/morfcollector --config __CONFIG_DIR__/morfcollector.json
 Restart=always
 RestartSec=5
