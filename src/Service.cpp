@@ -20,8 +20,10 @@ namespace morfcollector {
 namespace {
 // Repertoires par defaut du service, alignes sur service.json (docs/FILESYSTEM.md).
 // Sous Linux : donnees dans /opt/morfcollector/data, configuration (et coffre)
-// dans /etc/morfcollector. Sous Windows, faute de /etc, tout vit sous
-// %ProgramData%\morfcollector (sous-dossiers data/ et config/).
+// dans /etc/morfsystem/morfcollector -- tout le parc partage un point d'entree
+// UNIQUE sous /etc/morfsystem. Sous Windows, meme logique sous
+// %ProgramData%\morfsystem\morfcollector (les donnees restent sous
+// %ProgramData%\morfcollector\data).
 QString appDir() {
 #if defined(Q_OS_WIN)
     const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
@@ -34,9 +36,9 @@ QString appDir() {
 QString configDir() {
 #if defined(Q_OS_WIN)
     const QString base = qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData"));
-    return QDir(base).filePath(QStringLiteral("morfcollector/config"));
+    return QDir(base).filePath(QStringLiteral("morfsystem/morfcollector"));
 #else
-    return QStringLiteral("/etc/morfcollector");
+    return QStringLiteral("/etc/morfsystem/morfcollector");
 #endif
 }
 

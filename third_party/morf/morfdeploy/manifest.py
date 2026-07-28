@@ -189,7 +189,7 @@ class Manifest:
             raise ManifestError(
                 f"No {MANIFEST_NAME} in {repo_root}.\n"
                 f"A project states its own deployment facts there; see "
-                f"morfCollector/{MANIFEST_NAME} for the reference."
+                f"morfTemplateService/{MANIFEST_NAME} for the reference."
             )
         try:
             raw = json.loads(path.read_text(encoding="utf-8-sig"))

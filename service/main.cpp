@@ -35,7 +35,8 @@ QString findDefaultConfig() {
         QDir(exeDir).filePath("morfcollector.json"),
         QDir(exeDir).filePath("config/morfcollector.json"),
 #ifdef Q_OS_UNIX
-        QStringLiteral("/etc/morfcollector/morfcollector.json"),
+        QStringLiteral("/etc/morfsystem/morfcollector/morfcollector.json"),
+        QStringLiteral("/etc/morfcollector/morfcollector.json"),   // ancien emplacement (avant le regroupement sous /etc/morfsystem)
 #endif
     };
     for (const QString& c : candidates)

@@ -3,15 +3,24 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [0.3.0] - 2026-07-28
 
 ### Modifié
 
+- **Configuration regroupée sous `/etc/morfsystem/<service>`.** Tout le parc
+  partage désormais un point d'entrée UNIQUE dans `/etc` (`/etc/morfsystem/`),
+  qui contient le fichier partagé `morfsystem.json` et un sous-dossier par
+  service, au lieu d'un `/etc/<service>` par service à la racine de `/etc`. Sous
+  Windows : `%ProgramData%\morfsystem\<service>`. Les données restent sous
+  `/opt/<service>`. L'ancien `/etc/<service>` est adopté à l'installation
+  (`migrate_from`).
+- Le **coffre de secrets** (`vault.enc` + `vault.key`) suit la config :
+  `/etc/morfsystem/morfcollector`, toujours séparé des données (`storage_root`).
 - **Rangement des données conforme à la convention morfSystem** (`docs/FILESYSTEM.md`).
   Les objets collectés et l'index vivent désormais sous `<app_dir>/data`
   (`/opt/morfcollector/data` sous Linux) au lieu d'un dossier applicatif à plat.
   Le **coffre de secrets** (`vault.enc` + `vault.key`) est déplacé dans le dossier
-  de configuration (`/etc/morfcollector`), **séparé des données** : copier ou
+  de configuration (`/etc/morfsystem/morfcollector`), **séparé des données** : copier ou
   sauvegarder `data/` n'emporte plus jamais la clé, et le chiffrement au repos
   garde son sens. Deux réglages facultatifs : `storage_root` (données) et
   `vault_root` (coffre). La disposition disque restait un détail d'implémentation

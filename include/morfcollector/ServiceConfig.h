@@ -30,7 +30,7 @@ struct ServiceConfig {
 
     // Racine du COFFRE de secrets (vault.enc + vault.key). Volontairement SEPAREE
     // des donnees : copier le dossier data/ ne doit jamais emporter la cle. Vide
-    // => dossier de configuration (/etc/morfcollector sous Linux), la ou vivent
+    // => dossier de configuration (/etc/morfsystem/morfcollector sous Linux), la ou vivent
     // deja les secrets de la machine.
     QString vaultRoot;
 

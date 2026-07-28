@@ -26,7 +26,7 @@
 // realiste pour un service autonome sans TPM ni phrase de passe.
 //
 // Disposition : <root>/vault.enc (donnees chiffrees) + <root>/vault.key (cle),
-// ou <root> est le dossier de CONFIGURATION (/etc/morfcollector), distinct du
+// ou <root> est le dossier de CONFIGURATION (/etc/morfsystem/morfcollector), distinct du
 // dossier de donnees. Ainsi copier ou sauvegarder les objets collectes n'emporte
 // jamais la cle : le chiffrement au repos garde son sens (docs/FILESYSTEM.md).
 // -----------------------------------------------------------------------------
