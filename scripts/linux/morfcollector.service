@@ -11,7 +11,7 @@
 # corrige a la racine le coffre inecrivable qui laissait les sources en auth_failed.
 
 [Unit]
-Description=morfCollector — service morfSystem
+Description=morfCollector - service morfSystem
 After=local-fs.target network-online.target
 Wants=network-online.target
 
