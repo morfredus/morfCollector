@@ -3,6 +3,19 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.4.4] - 2026-08-17
+
+### Ajouté
+
+- **Déclaration de purge** dans `service.json` : catégories `vault` (le coffre
+  chiffré : clé + secrets) et `data` (les collectes conservées), toutes deux
+  destructrices. Chacune utilise `from_config` (`vault_root` / `storage_root`)
+  pour que morfdeploy lise le vrai emplacement dans la config déployée quand
+  l'admin l'a relocalisé, avec repli sur `state/vault` et `state/data`. Effaçables
+  par `service.py purge vault|data` et `morf purge morfCollector …` (avec
+  `--dry-run`, confirmation à jeton, et refus si le service tourne). Aucun
+  changement de code du service : capacité déclarée, exécutée par le socle.
+
 ## [0.4.3] - 2026-08-14
 
 ### Corrigé
