@@ -51,5 +51,10 @@
       "base": "state",
       "paths": ["data"]
     }
+  ],
+  "_comment_build_dependencies": "Bibliotheques necessaires a la COMPILATION (distinct de system_dependencies, qui sont pour l'execution). morfCollector utilise OpenSSL (coffre chiffre) et libssh2 (SFTP). morfDeploy resout le paquet selon la plateforme (Debian: libssl-dev, libssh2-1-dev) et verifie AVANT le build. Sur une toolchain sans gestionnaire de paquets (Qt officielle sous Windows), il annonce le besoin et laisse le build confirmer.",
+  "build_dependencies": [
+    { "id": "openssl", "required": true },
+    { "id": "libssh2", "required": true }
   ]
 }

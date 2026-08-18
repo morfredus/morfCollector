@@ -3,6 +3,18 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.4.5] - 2026-08-18
+
+### Ajouté
+
+- **Déclaration de dépendances de build** dans `service.json` :
+  `build_dependencies` = `openssl` (coffre chiffré) et `libssh2` (SFTP), toutes
+  deux requises. morfDeploy 0.9.0 les résout **avant** le build (Debian :
+  `libssl-dev`, `libssh2-1-dev` ; sur une toolchain sans gestionnaire, annonce le
+  besoin). Sur l'Asus (Qt officielle, sans MSYS2), le build de morfCollector
+  échouait sur `find_package(OpenSSL)` : le besoin est désormais annoncé
+  clairement avant l'erreur CMake. Aucun changement de code du service.
+
 ## [0.4.4] - 2026-08-17
 
 ### Ajouté
