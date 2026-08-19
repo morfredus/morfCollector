@@ -510,6 +510,21 @@ morfBeacon), **lecture**, **administration**.
 | `GET` | `/sources/{id}/objects` | Liste des objets collectés (métadonnées d'index). | `200`, `404` |
 | `GET` | `/objects/{object_id}` | **Récupère l'original** conservé. C'est par là que le client lit la copie locale. | `200`, `404` |
 
+**Lecture des objets et manifeste.** `/sources/{id}/objects` et `/periods`
+décrivent ce qui est **conservé** (l'index), pas ce qui est **à collecter** (le
+manifeste courant) : ce sont deux plans distincts (§5). Une source est donc connue
+en lecture si elle figure **dans le manifeste OU dans l'index**. D'où :
+
+- source présente dans l'index (elle a des objets) → `200` + objets ;
+- source du manifeste mais sans objet encore collecté → `200` + liste vide ;
+- source totalement inconnue (ni manifeste ni index) → `404`.
+
+Un objet archivé reste ainsi lisible même si sa source n'est plus chargée dans le
+manifeste (collecteur redémarré avant que le fournisseur repousse, source retirée).
+Ce n'est pas une autorisation par source (la lecture est sous confiance LAN, §7.3) :
+`GET /sources/{id}` (détail de la **source**, qui expose les `params` du manifeste)
+reste, lui, en `404` hors manifeste.
+
 ### 6.3 Endpoints d'administration
 
 Exécutent les actions de la vision. **Toutes** sont réalisées par morfCollector ;

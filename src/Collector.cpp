@@ -200,8 +200,22 @@ bool Collector::sourceDetail(const QString& id, QJsonObject& out) const {
     return true;
 }
 
+// L'existence d'une source, pour la LECTURE de ce qu'elle a conservé, est établie
+// par l'INDEX (objets sur disque), pas par le manifeste courant : le manifeste dit
+// ce qu'il faut COLLECTER, l'index dit ce qui est CONSERVÉ (CONTRAT.md §5). Un
+// objet archivé reste donc consultable même si sa source n'est plus chargée
+// (collecteur redémarré avant re-push, source retirée). Trois cas :
+//   - source connue de l'index (a des objets)      -> 200 + objets ;
+//   - source connue du manifeste mais sans objet   -> 200 + liste vide ;
+//   - source totalement inconnue (ni l'un ni l'autre) -> 404.
+// Ce n'est pas une frontière d'autorisation (confiance LAN, CONTRAT.md §7.3) ;
+// deleteSourceObjects applique déjà cette autorité de l'index.
+bool Collector::isKnownSource(const QString& id) const {
+    return m_sources.find(id) != nullptr || m_store.objectCountOf(id) > 0;
+}
+
 bool Collector::periods(const QString& id, QJsonArray& out) const {
-    if (!m_sources.find(id))
+    if (!isKnownSource(id))
         return false;
     out = QJsonArray{};
     for (const QString& p : m_store.periodsOf(id))
@@ -210,7 +224,7 @@ bool Collector::periods(const QString& id, QJsonArray& out) const {
 }
 
 bool Collector::objects(const QString& id, QJsonArray& out) const {
-    if (!m_sources.find(id))
+    if (!isKnownSource(id))
         return false;
     out = QJsonArray{};
     for (const CollectedObject& o : m_store.objectsOf(id))

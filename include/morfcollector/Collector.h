@@ -84,6 +84,9 @@ private:
     void startCollection(Source* s);
     void onSchedulerTick();                  // collectes planifiees dues
     QJsonObject enrich(const Source* s, bool detail) const;  // + stats du store
+    // Source connue pour la LECTURE : presente dans le manifeste OU dans l'index
+    // (objets conserves). Voir la note dans Collector.cpp.
+    bool isKnownSource(const QString& id) const;
 
     SourceRegistry               m_sources;
     ObjectStore                  m_store;

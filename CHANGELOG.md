@@ -3,6 +3,25 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.5.1] - 2026-08-19
+
+### Corrigé
+
+- **Lecture des objets indépendante du manifeste courant** (contrat §6.2).
+  `GET /sources/{id}/objects` et `/periods` répondaient `404` dès que la source
+  n'était pas chargée dans le manifeste - or les sources ne sont pas persistées :
+  après un redémarrage, les objets pourtant archivés devenaient invisibles tant
+  que le fournisseur n'avait pas repoussé sa configuration. L'**index** (objets
+  conservés) est désormais l'autorité d'existence pour la lecture, pas le
+  manifeste (sources à collecter) : source dans l'index → `200` + objets ; source
+  du manifeste sans objet → `200` + liste vide ; source totalement inconnue →
+  `404`. Ce n'était pas une frontière d'autorisation (confiance LAN, §7.3) mais
+  une dépendance d'implémentation ; `deleteSourceObjects` appliquait déjà cette
+  autorité de l'index. Permet un diagnostic de cohérence en lecture seule côté
+  fournisseur sans avoir à pousser un manifeste au préalable. Additif et
+  rétrocompatible. `GET /sources/{id}` (détail de la source, qui expose les
+  `params` du manifeste) reste, lui, en `404` hors manifeste.
+
 ## [0.5.0] - 2026-08-19
 
 ### Modifié
