@@ -3,6 +3,20 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.7.0] - 2026-08-20
+
+### Corrigé
+
+- Le packaging Windows détecte la racine OpenSSL de la toolchain MinGW active,
+  sans chemin d'installation figé.
+
+## [0.6.0] - 2026-08-20
+
+### Ajouté
+
+- Mise à jour de la copie vendorée de morfDeploy 0.14.0 : le service peut
+  désormais produire des paquets dont la provenance est vérifiée.
+
 ## [0.5.1] - 2026-08-19
 
 ### Corrigé

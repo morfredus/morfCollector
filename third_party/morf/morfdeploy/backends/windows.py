@@ -68,6 +68,16 @@ def _mingw_toolchain_overrides() -> list:
         if qmake:
             prefix = Path(qmake).resolve().parent.parent
             overrides.append(f"-DCMAKE_PREFIX_PATH={prefix}")
+    if not os.environ.get("OPENSSL_ROOT_DIR"):
+        openssl = shutil.which("openssl")
+        if openssl:
+            # OpenSSL installed with the active MinGW toolchain exposes its
+            # executable under <prefix>/bin and headers under <prefix>/include.
+            # Deriving the prefix keeps a portable preset free of one machine's
+            # MSYS2 installation path.
+            prefix = Path(openssl).resolve().parent.parent
+            if (prefix / "include" / "openssl" / "ssl.h").is_file():
+                overrides.append(f"-DOPENSSL_ROOT_DIR={prefix}")
     return overrides
 
 #: Wrappers that implement the SCM handshake for an ordinary executable.
