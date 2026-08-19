@@ -3,6 +3,31 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.5.0] - 2026-08-19
+
+### Modifié
+
+- **Collecte incrémentale par la taille** (contrat §5.6). Un fichier surveillé
+  n'est plus figé à sa première capture : morfCollector compare la taille distante
+  (obtenue au listage, sans transfert) à celle du dernier état conservé, et
+  re-télécharge dès qu'elle diffère. Indispensable pour les logs o2switch, qui
+  sont un `.gz` **par mois** se complétant au fil de l'eau : avant, un mois
+  collecté tôt restait tronqué jusqu'à sa clôture.
+- **Upsert par (source, nom d'origine)** dans l'`ObjectStore` : recollecter un nom
+  déjà connu **remplace** l'objet (même `object_id`, dernier état) au lieu d'en
+  créer un second. Sans ça, la collecte quotidienne d'un fichier mutable empilait
+  une copie par nuit (duplication). La référence reste stable pour un client qui a
+  déjà lu l'objet.
+
+### Détails
+
+- Détection : taille supérieure = nouvelles données ; inférieure = fichier
+  tronqué, réinitialisé ou remplacé (rotation) ; égale = inchangé ; taille
+  distante inconnue = récupération. Un fichier disparu du listage n'est pas
+  supprimé (son état conservé reste disponible). Le `hash` reste une métadonnée
+  d'intégrité, jamais un critère de collecte (il imposerait de retransférer le
+  fichier). Contrat : fichiers surveillés **append-only**.
+
 ## [0.4.5] - 2026-08-18
 
 ### Ajouté

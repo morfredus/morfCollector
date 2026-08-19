@@ -456,6 +456,33 @@ Seules des actions **explicites** d'administration (voir §6.3) détruisent des
 octets. Aucune synchronisation, aucun retrait, aucun manifeste ne supprime jamais
 de données.
 
+### 5.6 Collecte incrémentale et rafraîchissement
+
+Un objet est **conservé tel quel** (§5.1 : aucune transformation du contenu), mais
+il n'est pas figé au premier passage. Chez la source, un fichier **nommé** est une
+**entité** dont morfCollector conserve le **dernier état** : le cas courant est un
+`.gz` **append-only** (un journal mensuel qui se complète au fil de l'eau).
+
+La détection du changement se fait par la **taille**, obtenue au listage (`stat`
+distant, sans transfert). Pour chaque nom, en comparant la taille distante à celle
+du dernier état conservé :
+
+| Situation | Décision |
+|---|---|
+| nom inconnu | nouveau fichier : téléchargement complet |
+| taille distante `>` conservée | nouvelles données : téléchargement complet |
+| taille distante `==` conservée | inchangé : rien à faire |
+| taille distante `<` conservée | tronqué, réinitialisé ou remplacé : téléchargement complet |
+| fichier absent du listage | signalé indisponible, **sans** supprimer l'état conservé |
+
+La récupération d'un nom **déjà connu** fait un **upsert** : elle **remplace**
+l'objet existant (même `object_id`, `size`/`hash`/`collected_at` mis à jour), elle
+n'empile pas une copie par passage. La référence reste stable pour un client qui a
+déjà lu l'objet. Le `hash` n'est **pas** un critère de collecte (il imposerait de
+transférer le fichier que l'on cherche justement à ne pas retransférer) ; il reste
+une métadonnée d'intégrité. Ce contrat suppose des fichiers surveillés
+**append-only** : le cas « contenu différent à taille strictement égale » en sort.
+
 ---
 
 ## 6. L'API HTTP

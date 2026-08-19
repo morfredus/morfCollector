@@ -19,6 +19,7 @@
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QSet>
+#include <QHash>
 #include <utility>
 
 namespace morfcollector {
@@ -56,7 +57,7 @@ struct CollectResult {
 // connecteur est stateless, donc appelable en parallele pour des sources
 // differentes.
 CollectResult runJob(IConnector* connector, const QJsonObject& params,
-                     const QJsonObject& creds, const QSet<QString>& known) {
+                     const QJsonObject& creds, const QHash<QString, qint64>& knownSizes) {
     CollectResult r;
     QVector<IConnector::RemoteItem> items;
     QString error;
@@ -65,8 +66,19 @@ CollectResult runJob(IConnector* connector, const QJsonObject& params,
     if (r.outcome != IConnector::Outcome::Ok) { r.error = error; return r; }
 
     for (const IConnector::RemoteItem& item : items) {
-        if (known.contains(item.name))
-            continue;   // deduplication : deja conserve
+        // Detection du changement par la TAILLE (les .gz surveilles sont
+        // append-only, cf. CONTRAT.md). `list` fournit la taille distante via un
+        // simple stat, sans transfert :
+        //   - nom inconnu               -> nouveau fichier, on recupere ;
+        //   - taille distante == stockee -> inchange, rien a faire ;
+        //   - taille distante != stockee -> grossi (nouvelles donnees), ou tronque
+        //                                   /remplace/rotation -> on recupere tout.
+        // Une taille distante inconnue (-1) ne permet pas de trancher : on recupere.
+        const auto it = knownSizes.constFind(item.name);
+        if (it != knownSizes.constEnd() && item.size >= 0 && item.size == it.value())
+            continue;
+        // Un fichier connu ABSENT de la liste n'est pas traite ici : on ne le
+        // supprime pas (son etat conserve reste disponible).
         QByteArray bytes;
         const IConnector::Outcome fo = connector->fetch(params, creds, item.name, bytes, error);
         if (fo != IConnector::Outcome::Ok) { r.outcome = fo; r.error = error; return r; }
@@ -236,9 +248,12 @@ void Collector::startCollection(Source* s) {
     // Instantane transmis au thread de travail (aucune reference partagee).
     const QJsonObject creds     = m_vault.get(s->credentialsRef());
     const QJsonObject retention = s->retention();
-    QSet<QString> known;
+    // Reference de deduplication : la taille du dernier etat conserve, par nom.
+    // objectsOf est trie par date croissante -> le plus recent gagne pour un nom
+    // donne (cas d'anciens doublons herites d'avant l'upsert).
+    QHash<QString, qint64> knownSizes;
     for (const CollectedObject& o : m_store.objectsOf(id))
-        known.insert(o.originalName);
+        knownSizes.insert(o.originalName, o.size);
 
     s->setOperationalState(OperationalState::Collecting);
     m_inFlight.insert(id);
@@ -277,7 +292,7 @@ void Collector::startCollection(Source* s) {
         s2->setOperationalState(OperationalState::Waiting);
     });
 
-    watcher->setFuture(QtConcurrent::run(runJob, connector, params, creds, known));
+    watcher->setFuture(QtConcurrent::run(runJob, connector, params, creds, knownSizes));
 }
 
 void Collector::onSchedulerTick() {

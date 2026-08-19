@@ -32,12 +32,13 @@ public:
 
     bool init();   // cree l'arborescence et charge l'index
 
-    // Deduplication : un nom d'origine deja conserve pour cette source est ignore
-    // (on ne recollecte pas ce qu'on possede deja).
+    // Vrai si un objet de ce nom d'origine est deja conserve pour cette source.
     bool hasName(const QString& sourceId, const QString& originalName) const;
 
-    // Conserve `bytes` tel quel. Renvoie l'objet indexe ; `ok`=false en cas
-    // d'echec d'ecriture.
+    // Conserve `bytes` tel quel, en UPSERT par (source, nom d'origine) : si un objet
+    // de ce nom existe deja, il est REMPLACE (meme object_id, dernier etat conserve)
+    // au lieu d'etre duplique - un .gz append-only qui grossit reste un seul objet.
+    // Renvoie l'objet indexe ; `ok`=false en cas d'echec d'ecriture.
     CollectedObject put(const QString& sourceId, const QString& originalName,
                         const QByteArray& bytes, const QString& period, bool& ok);
 

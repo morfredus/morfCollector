@@ -82,7 +82,7 @@ chemin, il reste la même source). `POST /manifest` :
       "connector": { "name": "sftp", "version": 1 },
       "params": { "host": "…", "remote_dir": "…", "match": "", "site_key": "monsite.fr" },
       "credentials_ref": "sw-6a0ad95e-…",
-      "schedule": { "every_minutes": 360 },
+      "schedule": { "daily_at": "02:00" },
       "retention": { "mode": "keep_forever" }
     }
   ]

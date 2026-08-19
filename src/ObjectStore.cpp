@@ -61,8 +61,23 @@ bool ObjectStore::hasName(const QString& sourceId, const QString& originalName) 
 
 CollectedObject ObjectStore::put(const QString& sourceId, const QString& originalName,
                                  const QByteArray& bytes, const QString& period, bool& ok) {
+    // Upsert par (source, nom d'origine) : chez la source, un fichier NOMME est UNE
+    // entite dont on conserve le DERNIER etat. Les .gz surveilles sont append-only
+    // (un log mensuel qui se complete au fil de l'eau) : recollecter un nom deja
+    // connu doit REMPLACER l'objet, jamais en creer un second - sinon on empilerait
+    // une copie par nuit (duplication). On reutilise l'object_id existant : la
+    // reference reste stable pour le client qui a deja telecharge cet objet.
+    QString reuseId;
+    for (const CollectedObject& e : m_objects) {
+        if (e.sourceId == sourceId && e.originalName == originalName) {
+            reuseId = e.objectId;
+            break;
+        }
+    }
+
     CollectedObject o;
-    o.objectId     = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    o.objectId     = reuseId.isEmpty()
+        ? QUuid::createUuid().toString(QUuid::WithoutBraces) : reuseId;
     o.sourceId     = sourceId;
     o.originalName = originalName;
     o.size         = bytes.size();
@@ -73,10 +88,12 @@ CollectedObject ObjectStore::put(const QString& sourceId, const QString& origina
 
     const QString dir = sourceDir(sourceId);
     QDir().mkpath(dir);
+    // Le chemin derive de l'object_id : reutiliser l'id => on reecrit le meme
+    // fichier (Truncate), l'ancien contenu est remplace sans laisser d'orphelin.
     o.storedPath = QDir(dir).filePath(o.objectId + QStringLiteral("__") + safeName(originalName));
 
     QFile f(o.storedPath);
-    if (!f.open(QIODevice::WriteOnly)) { ok = false; return o; }
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) { ok = false; return o; }
     const bool written = (f.write(bytes) == bytes.size());
     f.close();
     if (!written) { ok = false; return o; }
