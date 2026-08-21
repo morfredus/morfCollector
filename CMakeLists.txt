@@ -21,7 +21,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MORFCOLLECTOR_
 file(STRINGS "${MORFCOLLECTOR_VERSION_FILE}" MORFCOLLECTOR_VERSION_FROM_FILE LIMIT_COUNT 1)
 string(STRIP "${MORFCOLLECTOR_VERSION_FROM_FILE}" MORFCOLLECTOR_VERSION_FROM_FILE)
 
-project(morfCollector VERSION "${MORFCOLLECTOR_VERSION_FROM_FILE}" LANGUAGES CXX)
+project(morfCollector VERSION "${MORFCOLLECTOR_VERSION_FROM_FILE}" LANGUAGES C CXX)
 
 # --- Standard C++ ---------------------------------------------------------
 set(CMAKE_CXX_STANDARD 17)
@@ -35,6 +35,30 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Network Concurrent)
 
 # OpenSSL (libcrypto) : coffre chiffre des secrets (AES-256-GCM).
+# FindOpenSSL sonde du C : d'ou LANGUAGES C plus haut. Apres un reset de cache
+# MinGW, OPENSSL_ROOT_DIR seul peut manquer les import libs .dll.a (CMake 4
+# cherche souvent des .lib MSVC). On les pose si le prefix est connu.
+if(OPENSSL_ROOT_DIR)
+    if(NOT OPENSSL_INCLUDE_DIR AND EXISTS "${OPENSSL_ROOT_DIR}/include/openssl/ssl.h")
+        set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+    endif()
+    if(NOT OPENSSL_CRYPTO_LIBRARY)
+        foreach(_cand IN ITEMS libcrypto.dll.a libcrypto.a)
+            if(EXISTS "${OPENSSL_ROOT_DIR}/lib/${_cand}")
+                set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/${_cand}")
+                break()
+            endif()
+        endforeach()
+    endif()
+    if(NOT OPENSSL_SSL_LIBRARY)
+        foreach(_cand IN ITEMS libssl.dll.a libssl.a)
+            if(EXISTS "${OPENSSL_ROOT_DIR}/lib/${_cand}")
+                set(OPENSSL_SSL_LIBRARY "${OPENSSL_ROOT_DIR}/lib/${_cand}")
+                break()
+            endif()
+        endforeach()
+    endif()
+endif()
 find_package(OpenSSL REQUIRED)
 
 # --- libssh2 (connecteur sftp) : dependance OPTIONNELLE --------------------

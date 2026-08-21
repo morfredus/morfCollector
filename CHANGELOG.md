@@ -3,6 +3,14 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.8.1] - 2026-08-21
+
+### Corrigé
+
+- Compilation MinGW : le projet declare aussi le langage C pour FindOpenSSL,
+  et pointe les import libs `.dll.a` quand `OPENSSL_ROOT_DIR` est connu. Un
+  reset de cache CMake (changement de `g++`) ne perd plus OpenSSL.
+
 ## [0.8.0] - 2026-08-20
 
 ### Ajouté
