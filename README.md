@@ -2,7 +2,7 @@
 
 *Read in another language: **English** (this document) · [Français](README.fr.md).*
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus)
 ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
 ![Build](https://img.shields.io/badge/CMake-3.21+-064F8C?logo=cmake)
@@ -12,6 +12,10 @@
 in modules, and you get - for free - an HTTP API, a JSON config loader, a LAN
 announce (morfBeacon), a systemd service **and** a Windows service, all working
 first try.
+
+Connectors currently include local files (`fs`), SFTP, and GitHub traffic
+(`github-traffic`) : morfCollector executes a manifest, it never decides what
+to collect.
 
 It is distilled from morfSensor and morfNotify: same architecture, no domain code.
 

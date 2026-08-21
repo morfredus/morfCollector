@@ -80,6 +80,7 @@ add_library(morfCollector STATIC
     src/ObjectStore.cpp
     src/Vault.cpp
     src/FsConnector.cpp
+    src/GitHubTrafficConnector.cpp
     src/Collector.cpp
     src/HttpServer.cpp
     src/Service.cpp
@@ -92,6 +93,7 @@ add_library(morfCollector STATIC
     include/morfcollector/ObjectStore.h
     include/morfcollector/Vault.h
     include/morfcollector/FsConnector.h
+    include/morfcollector/GitHubTrafficConnector.h
     include/morfcollector/Collector.h
     include/morfcollector/ServiceConfig.h
     include/morfcollector/SelfDescription.h

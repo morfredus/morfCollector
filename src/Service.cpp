@@ -86,7 +86,9 @@ bool Service::start() {
 
         // Capacite du parc : un fournisseur decouvre morfCollector par ce qu'il
         // sait faire, jamais par son nom (CONTRAT.md §7.1).
-        pc.capabilities = { QStringLiteral("collection") };
+        pc.capabilities = m_collector->capabilities();
+        if (!pc.capabilities.contains(QStringLiteral("collection")))
+            pc.capabilities.prepend(QStringLiteral("collection"));
 
         m_heartbeat = new morfbeacon::Heartbeat(pc, m_collector, this);
         m_heartbeat->start();

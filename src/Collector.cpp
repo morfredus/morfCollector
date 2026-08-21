@@ -8,6 +8,7 @@
 #include "morfcollector/Manifest.h"
 #include "morfcollector/IConnector.h"
 #include "morfcollector/FsConnector.h"
+#include "morfcollector/GitHubTrafficConnector.h"
 #ifdef MORFCOLLECTOR_HAVE_SFTP
 #  include "morfcollector/SftpConnector.h"
 #endif
@@ -99,6 +100,7 @@ Collector::Collector(QString dataRoot, QString vaultRoot, QObject* parent)
     // Plan de donnees : enregistrement des connecteurs. Chacun declare sa
     // capacite, surfacee dans /status (CONTRAT.md §2, §7.2).
     registerConnector(new FsConnector());
+    registerConnector(new GitHubTrafficConnector());
 #ifdef MORFCOLLECTOR_HAVE_SFTP
     registerConnector(new SftpConnector());
 #endif

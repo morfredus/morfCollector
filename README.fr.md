@@ -2,7 +2,7 @@
 
 *Lire dans une autre langue : [English](README.md) · **Français** (ce document).*
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue)](CHANGELOG.md)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus)
 ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
 ![Build](https://img.shields.io/badge/CMake-3.21+-064F8C?logo=cmake)
@@ -20,6 +20,10 @@ Distillé de morfSensor et morfNotify : même architecture, sans code métier.
 - **Point d'extension `IModule`** - branchez votre métier en un ou plusieurs
   modules (capteur, notifieur, collecteur…). Un `ExampleModule` fonctionnel sert
   de point de départ.
+
+Connecteurs actuels : fichiers locaux (`fs`), SFTP, et trafic GitHub
+(`github-traffic`). morfCollector exécute un manifeste ; il ne décide jamais
+quoi collecter.
 - **API HTTP** (GET + POST) - `GET /status` (compatible morfBeacon), `/healthz`,
   `/modules`, `/modules/{id}`, et `POST /example` qui montre la lecture d'un corps.
 - **Config** - fichier JSON avec une liste `modules` ; une fabrique les instancie.

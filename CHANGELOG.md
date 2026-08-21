@@ -3,6 +3,22 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.8.0] - 2026-08-20
+
+### Ajouté
+
+- **Connecteur `github-traffic/1`.** Collecte quotidienne d'un instantané brut
+  GitHub (vues, clones, pages, référents, releases et `download_count`) sans
+  interprétation. Objet partiel conservé si un endpoint échoue. Le PAT reste
+  dans le coffre. Sous-contrat : `docs/fr/CONNECTEUR-GITHUB-TRAFFIC.md`.
+- Le heartbeat annonce aussi les capacités des connecteurs réellement
+  compilés (`sftp`, `github-traffic`, …) en plus de `collection`.
+
+### Corrigé
+
+- Compilation MinGW du connecteur GitHub : boucle sur les endpoints sans
+  `initializer_list` mixant pointeurs const et non-const.
+
 ## [0.7.0] - 2026-08-20
 
 ### Corrigé
