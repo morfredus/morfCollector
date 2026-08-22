@@ -37,7 +37,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from ..activity import emit_build_activity
+from ..activity import complete_build_activity
 from ..manifest import Manifest
 from .base import ServiceBackend
 
@@ -329,13 +329,22 @@ class WindowsBackend(ServiceBackend):
 
         result = subprocess.run(
             [tool, "--no-translations", "--compiler-runtime", str(installed_binary)],
-            env=env, check=False,
+            env=env, text=True, capture_output=True, check=False,
         )
+        detail = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+        if detail:
+            print(detail)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"windeployqt failed ({result.returncode}) for {installed_binary.name}."
-            )
-        print(f"  Qt runtime deployed beside {installed_binary.name} (windeployqt)")
+            # Some services are plain MinGW executables. Asking windeployqt to
+            # inspect one is expected to fail, but the toolchain dependency pass
+            # below is still required for it.
+            if "does not seem to be a qt executable" not in detail.lower():
+                raise RuntimeError(
+                    f"windeployqt failed ({result.returncode}) for {installed_binary.name}."
+                )
+            print(f"  no Qt runtime required beside {installed_binary.name}")
+        else:
+            print(f"  Qt runtime deployed beside {installed_binary.name} (windeployqt)")
 
         copied = self._copy_toolchain_dlls(installed_binary.parent, Path(tool).parent)
         if copied:
@@ -513,7 +522,7 @@ class WindowsBackend(ServiceBackend):
                            cwd=repo_root, check=True)
             ok = True
         finally:
-            emit_build_activity(repo_root, preset, start, time.time(), ok)
+            complete_build_activity(repo_root, preset, start, ok)
 
     # -- Internals --------------------------------------------------------
 
