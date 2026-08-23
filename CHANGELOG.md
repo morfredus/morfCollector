@@ -3,6 +3,12 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.8.4] - 2026-08-23
+
+### Corrigé
+
+- Configuration CMake sous MinGW (Windows) : `find_package(OpenSSL REQUIRED)` échouait alors que libcrypto était bien installée à côté du compilateur. Lancé depuis PowerShell, CMake ne déduit pas toujours le préfixe de la toolchain, donc `FindOpenSSL` ne le sondait pas. Le préfixe est désormais retrouvé de façon générique à partir de `CMAKE_CXX_COMPILER` (calqué sur SiteWatch pour ZLIB), sans figer aucun chemin : sous MSYS2 OpenSSL est trouvé automatiquement, sous Qt officiel le bloc reste inactif et la détection normale s'applique. Vérifié sous MSYS2 (OpenSSL 3.6.3, connecteur SFTP actif, build complet).
+
 ## [0.8.3] - 2026-08-21
 
 ### Ajouté

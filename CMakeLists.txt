@@ -38,6 +38,24 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network Concurrent)
 # FindOpenSSL sonde du C : d'ou LANGUAGES C plus haut. Apres un reset de cache
 # MinGW, OPENSSL_ROOT_DIR seul peut manquer les import libs .dll.a (CMake 4
 # cherche souvent des .lib MSVC). On les pose si le prefix est connu.
+#
+# Sous MinGW lance depuis PowerShell, CMake ne deduit pas toujours le prefixe de
+# la toolchain a partir du compilateur : FindOpenSSL peut alors echouer meme si
+# libcrypto est installee a cote du compilateur. Retrouver ce prefixe de facon
+# generique (calque sur SiteWatch pour ZLIB), sans figer aucun chemin :
+#   - MSYS2 : g++ est dans <prefix>/bin, les en-tetes dans <prefix>/include ->
+#     OpenSSL est trouve automatiquement ;
+#   - Qt officiel (Tools/mingwXXXX_64) : pas d'en-tetes OpenSSL sous ce prefixe,
+#     donc rien n'est pose et FindOpenSSL garde sa detection normale.
+# Le bloc est purement additif et conditionne a la presence reelle de ssl.h.
+if(WIN32 AND MINGW AND NOT OPENSSL_ROOT_DIR)
+    get_filename_component(MORFCOLLECTOR_MINGW_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    get_filename_component(MORFCOLLECTOR_MINGW_ROOT "${MORFCOLLECTOR_MINGW_BIN}" DIRECTORY)
+    if(EXISTS "${MORFCOLLECTOR_MINGW_ROOT}/include/openssl/ssl.h")
+        set(OPENSSL_ROOT_DIR "${MORFCOLLECTOR_MINGW_ROOT}")
+    endif()
+endif()
+
 if(OPENSSL_ROOT_DIR)
     if(NOT OPENSSL_INCLUDE_DIR AND EXISTS "${OPENSSL_ROOT_DIR}/include/openssl/ssl.h")
         set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
