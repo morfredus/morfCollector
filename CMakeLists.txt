@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # =============================================================================
-#  morfCollector — squelette reutilisable de service morfSystem.
+#  morfCollector - squelette reutilisable de service morfSystem.
 #
 #  POUR CREER UN NOUVEAU SERVICE : le plus simple est le script de clonage
 #      scripts/new-service.sh   morfmonservice MorfMonService   (Linux/macOS)

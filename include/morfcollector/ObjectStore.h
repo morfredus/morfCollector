@@ -32,9 +32,6 @@ public:
 
     bool init();   // cree l'arborescence et charge l'index
 
-    // Vrai si un objet de ce nom d'origine est deja conserve pour cette source.
-    bool hasName(const QString& sourceId, const QString& originalName) const;
-
     // Conserve `bytes` tel quel, en UPSERT par (source, nom d'origine) : si un objet
     // de ce nom existe deja, il est REMPLACE (meme object_id, dernier etat conserve)
     // au lieu d'etre duplique - un .gz append-only qui grossit reste un seul objet.

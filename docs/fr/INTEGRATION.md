@@ -31,7 +31,7 @@ dépendance.
 ## 1. Découvrir morfCollector
 
 Écouter le heartbeat morfBeacon (UDP `45454`) et retenir le premier service qui
-annonce la **capacité `collection`** — jamais le nom `morfCollector`, qui est
+annonce la **capacité `collection`** - jamais le nom `morfCollector`, qui est
 modifiable. L'adresse source du datagramme + `status_port` donnent l'URL de base.
 
 ```cpp
@@ -57,7 +57,7 @@ conserver localement (ici un fichier `config.json.collector.json`).
 
 - configuration inchangée **et** collecteur à jour → **ne rien faire** ;
 - configuration modifiée → **révision + 1**, puis pousser ;
-- collecteur en retard (redémarré, il a oublié les sources — elles ne sont pas
+- collecteur en retard (redémarré, il a oublié les sources - elles ne sont pas
   persistées côté collecteur) → repousser la révision courante.
 
 Frapper une **nouvelle génération** uniquement en cas de restauration, de

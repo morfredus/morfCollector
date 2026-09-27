@@ -1,5 +1,5 @@
 /*
- * morfCollector — demon de service
+ * morfCollector - demon de service
  * Copyright (C) 2026 morfredus
  * SPDX-License-Identifier: GPL-3.0-only
  *
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
 
     QCommandLineParser parser;
     parser.setApplicationDescription(
-        QStringLiteral("morfCollector — collecte et conservation locale de "
+        QStringLiteral("morfCollector - collecte et conservation locale de "
                        "ressources distantes temporaires (contrat morfcollect/1)."));
     parser.addHelpOption();
     parser.addVersionOption();

@@ -52,13 +52,6 @@ bool ObjectStore::init() {
     return loadIndex();
 }
 
-bool ObjectStore::hasName(const QString& sourceId, const QString& originalName) const {
-    for (const CollectedObject& o : m_objects)
-        if (o.sourceId == sourceId && o.originalName == originalName)
-            return true;
-    return false;
-}
-
 CollectedObject ObjectStore::put(const QString& sourceId, const QString& originalName,
                                  const QByteArray& bytes, const QString& period, bool& ok) {
     // Upsert par (source, nom d'origine) : chez la source, un fichier NOMME est UNE

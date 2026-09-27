@@ -37,7 +37,6 @@ public:
     bool start();
     void stop();
 
-    int         sourceCount() const;
     quint16     httpPort() const;
 
     // true si le coffre de secrets est operationnel (voir Collector::vaultReady).

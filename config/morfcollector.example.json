@@ -7,8 +7,8 @@
   "http_port": 8792,
   "bind_address": "0.0.0.0",
 
-  "_comment_storage_root": "Racine des DONNEES metier (objets collectes + index). Vide/absent => <app_dir>/data (/opt/morfcollector/data sous Linux). C'est la source de verite : a sauvegarder (docs/FILESYSTEM.md).",
-  "_comment_vault_root": "Racine du COFFRE de secrets (vault.enc + vault.key), volontairement SEPAREE des donnees pour que copier data/ n'emporte jamais la cle. Vide/absent => dossier de configuration (/etc/morfsystem/morfcollector sous Linux).",
+  "_comment_storage_root": "Racine des DONNEES metier (objets collectes + index). Vide/absent => <etat>/data (/var/lib/morfsystem/morfcollector/data sous Linux, via StateDirectory). C'est la source de verite : a sauvegarder (docs/FILESYSTEM.md).",
+  "_comment_vault_root": "Racine du COFFRE de secrets (vault.enc + vault.key), volontairement SEPAREE des donnees pour que copier data/ n'emporte jamais la cle. Vide/absent => <etat>/vault (/var/lib/morfsystem/morfcollector/vault sous Linux), accessible en ecriture au compte du service.",
 
   "beacon": {
     "_comment": "Annonce de presence sur le LAN (protocole morfBeacon, port du parc).",

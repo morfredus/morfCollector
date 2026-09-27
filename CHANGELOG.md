@@ -3,6 +3,39 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.8.9] - 2026-09-27
+
+### Changed
+
+- Re-vendored morfBeacon to 0.7.2 (documentation-only release; `include/` and
+  `src/` unchanged).
+
+## [0.8.8] - 2026-09-27
+
+### Changed
+
+- Re-vendored morfDeploy to 0.20.7 (dead-code removal and punctuation only; no
+  behaviour change).
+
+## [0.8.7] - 2026-09-27
+
+### Fixed
+
+- **The example config described pre-0.4.0 locations.** The `storage_root` and
+  `vault_root` comments of `config/morfcollector.example.json` said the defaults
+  were `/opt/morfcollector/data` and `/etc/morfsystem/morfcollector`; both now live
+  under the state directory (`<state>/data`, `<state>/vault`).
+
+### Removed
+
+- **Dead code with no caller:** `ObjectStore::hasName` (superseded by the upsert in
+  `put`), `Service::sourceCount` and `SourceRegistry::sourcesJson` (`GET /sources`
+  is served by `Collector::sourcesEnvelope`).
+
+### Changed
+
+- Em dashes replaced by `-` in the project's own files.
+
 ## [0.8.6] - 2026-09-07
 
 ### Changed

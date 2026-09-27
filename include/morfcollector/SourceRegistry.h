@@ -61,7 +61,6 @@ public:
     bool           remove(const QString& sourceId);   // suppression definitive
 
     // --- Vues / metriques ----------------------------------------------------
-    QJsonArray  sourcesJson() const;               // GET /sources
     QJsonObject metrics() const;                    // resume pour /status
 
 private:

@@ -104,7 +104,6 @@ void Service::stop() {
         m_http->stop();
 }
 
-int Service::sourceCount() const  { return m_collector->sourcesEnvelope().value("count").toInt(); }
 quint16 Service::httpPort() const { return m_http ? m_http->port() : 0; }
 bool Service::vaultReady() const  { return m_collector->vaultReady(); }
 Collector* Service::collector() const { return m_collector; }

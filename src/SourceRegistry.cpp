@@ -95,13 +95,6 @@ bool SourceRegistry::remove(const QString& sourceId) {
     return m_sources.remove(sourceId) > 0;
 }
 
-QJsonArray SourceRegistry::sourcesJson() const {
-    QJsonArray arr;
-    for (const Source& s : m_sources)
-        arr.append(s.summaryJson());
-    return arr;
-}
-
 QJsonObject SourceRegistry::metrics() const {
     int active = 0;
     for (const Source& s : m_sources) {
