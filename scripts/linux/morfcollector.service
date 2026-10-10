@@ -29,5 +29,15 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
+# Durcissement (valide sur morfNotify, 2026-10-10) : systeme de fichiers en lecture
+# seule. morfCollector n'ecrit que sous son StateDirectory (data/ et vault/) et ne lance
+# aucun processus. ProtectHome=read-only (et non yes) : le connecteur SFTP peut lire une cle
+# privee sur fichier local (key_file) et le connecteur fs des dossiers sous le home ; la
+# lecture reste permise, l'ecriture est interdite.
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+
 [Install]
 WantedBy=multi-user.target

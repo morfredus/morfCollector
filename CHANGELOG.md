@@ -3,6 +3,14 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.8.13] - 2026-10-10
+
+### Changed
+
+- **Hardened systemd unit**: `ProtectSystem=strict`, `ProtectHome=read-only`, `PrivateTmp=yes`,
+  `NoNewPrivileges=yes`. The service only writes under its `StateDirectory` (`data/`, `vault/`) and
+  starts no process; home stays readable for a `key_file` or an `fs` source.
+
 ## [0.8.12] - 2026-10-10
 
 ### Changed
