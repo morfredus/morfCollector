@@ -316,6 +316,12 @@ QByteArray HttpServer::buildStatusJson() const {
     o["ts"]       = static_cast<double>(QDateTime::currentSecsSinceEpoch());
     o["metrics"]  = m_collector ? m_collector->metrics() : QJsonObject{};
 
+    // Activite EN COURS (contrat generique `activity/1`) : champ OPTIONNEL, absent
+    // quand aucune collecte n'est en vol. morfMonitor le lit en temps reel.
+    const QJsonObject activity = m_collector ? m_collector->activityJson() : QJsonObject{};
+    if (!activity.isEmpty())
+        o["activity"] = activity;
+
     // Contrat supporte : un fournisseur verifie la compatibilite AVANT de pousser
     // (CONTRAT.md §7.2). Cle optionnelle de premier niveau, additive au sens
     // morfbeacon/1.

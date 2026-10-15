@@ -240,6 +240,30 @@ bool Collector::readObject(const QString& objectId, QByteArray& out, QString& or
 
 // --- Pipeline de collecte (asynchrone) ---------------------------------------
 
+QJsonObject Collector::activityJson() const {
+    // Une collecte dure quelques secondes : l'activite n'existe que tant qu'au moins
+    // une source est en vol. `current` = sources en cours, `detail` = leur liste
+    // (courte) ; `started_at` = la plus ancienne, pour une duree honnete.
+    if (m_inFlight.isEmpty())
+        return {};
+    qint64 oldest = 0;
+    QStringList ids;
+    for (auto it = m_inFlight.constBegin(); it != m_inFlight.constEnd(); ++it) {
+        if (oldest == 0 || it.value() < oldest)
+            oldest = it.value();
+        ids << it.key();
+    }
+    ids.sort();
+    QJsonObject a;
+    a["type"]       = QStringLiteral("collecte");
+    a["state"]      = QStringLiteral("running");
+    a["started_at"] = static_cast<double>(oldest);
+    a["current"]    = static_cast<double>(m_inFlight.size());
+    a["detail"]     = ids.mid(0, 3).join(QStringLiteral(", ")) +
+                      (ids.size() > 3 ? QStringLiteral(" +%1").arg(ids.size() - 3) : QString());
+    return a;
+}
+
 void Collector::startCollection(Source* s) {
     const QString id = s->id();
     if (m_inFlight.contains(id))
@@ -272,7 +296,7 @@ void Collector::startCollection(Source* s) {
         knownSizes.insert(o.originalName, o.size);
 
     s->setOperationalState(OperationalState::Collecting);
-    m_inFlight.insert(id);
+    m_inFlight.insert(id, QDateTime::currentSecsSinceEpoch());
 
     auto* watcher = new QFutureWatcher<CollectResult>(this);
     connect(watcher, &QFutureWatcherBase::finished, this,

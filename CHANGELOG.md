@@ -3,6 +3,18 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.9.0] - 2026-10-15
+
+### Added
+
+- `/status` declares the collections in flight as the generic `activity/1` object (type
+  `collecte`, number of sources, first source names), so morfMonitor shows them in its
+  "Activités en cours" section.
+
+### Changed
+
+- Resync the vendored morfBeacon (0.8.0).
+
 ## [0.8.13] - 2026-10-10
 
 ### Changed

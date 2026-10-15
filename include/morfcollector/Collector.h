@@ -72,6 +72,11 @@ public:
     // --- Capacites annoncees (CONTRAT.md §7.2) ------------------------------
     QStringList capabilities() const;
 
+    // --- Activite en cours (contrat generique `activity/1`) -----------------
+    // Objet vide si aucune collecte n'est en vol. Lu par /status (thread principal,
+    // comme m_inFlight : aucun verrou necessaire).
+    QJsonObject activityJson() const;
+
     // --- morfbeacon::IMetricsProvider ---------------------------------------
     QJsonObject metrics() const override;
     QString     state() const override;
@@ -92,7 +97,7 @@ private:
     ObjectStore                  m_store;
     Vault                        m_vault;           // coffre chiffre des secrets
     QHash<QString, IConnector*>  m_connectors;      // name -> connecteur
-    QSet<QString>                m_inFlight;         // sources en cours de collecte
+    QHash<QString, qint64>       m_inFlight;         // source -> debut (epoch s) des collectes en cours
     QTimer*                      m_scheduler = nullptr;
 };
 
