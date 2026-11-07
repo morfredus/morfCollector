@@ -3,6 +3,42 @@
 Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 et du [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [0.10.1] - 2026-11-07
+
+### Changed
+
+- Removed leftover references to the service skeleton (docs, comments, scripts).
+
+## [0.10.0] - 2026-11-07
+
+### Security
+
+- **`fs` connector allow-list**: the source `dir` must now be under a root of `fs_allowed_roots`
+  (admin config, read-only). Default is deny: without the list every `fs` source is refused.
+  Symbolic links are refused; the vault and object store folders are forbidden; paths are checked
+  with `canonicalPath` and a trailing separator.
+- **SFTP**: optional `host_key_sha256` param checked against the server key before authentication;
+  connect and per-operation timeouts; `readdir` errors reported; 256 MiB cap on a file read into
+  memory.
+- **HTTP**: writes with a cross-origin `Origin` get `403 cross_origin_forbidden`; CORS header only on
+  GET; `Content-Disposition` uses a sanitised name plus `filename*`; idle timeout on incomplete
+  connections; oversized `Content-Length` rejected.
+
+### Fixed
+
+- Vault: `vault.enc` and `vault.key` written atomically (`QSaveFile`, restrictive permissions before
+  commit, restrictive umask); an unreadable existing vault is never replaced by an empty one (kept as
+  `vault.enc.bak`, vault unavailable); a key is never regenerated next to an existing vault.
+- Object store: `index.json` and object files written atomically; an unreadable index is reported
+  (parse error logged), set aside as `index.json.corrupt` and rebuilt from the stored files.
+- Collector: the destructor waits for in-flight collection jobs before deleting the connectors;
+  a partial collection failure now keeps the items already fetched.
+
+### Added
+
+- ctest suite `guards` (path allow-list, origin check, file name, host key fingerprint, corrupt
+  vault and index handling).
+
 ## [0.9.0] - 2026-10-15
 
 ### Added

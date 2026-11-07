@@ -62,9 +62,6 @@ fournisseur → collecteur → conservation tourne.
   → `503`, jamais de fuite de secret) ; build multi-plateforme.
 - **Index SQLite** (optionnel, futur) : si le volume d'objets rend l'index JSON
   actuel lent.
-- **Réalignement du README** : sa présentation décrit encore un « squelette sans
-  code métier » (héritage du template dont morfCollector est issu), ce qui ne
-  correspond plus à la réalité du service.
 
 ## Non-objectifs (garde-fous du contrat)
 

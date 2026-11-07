@@ -9,6 +9,7 @@
  */
 
 #include "morfcollector/SftpConnector.h"
+#include "morfcollector/Guards.h"
 
 // --- Couche socket portable (Windows Winsock / POSIX) -----------------------
 #ifdef _WIN32
@@ -21,6 +22,9 @@
   #include <sys/socket.h>
   #include <netdb.h>
   #include <unistd.h>
+  #include <fcntl.h>
+  #include <sys/select.h>
+  #include <cerrno>
   using socket_t = int;
   static constexpr socket_t kInvalidSocket = -1;
   static inline void closeSocket(socket_t s) { ::close(s); }
@@ -34,11 +38,55 @@
 #include <QRegularExpression>
 #include <QString>
 
+#include <QDebug>
+
 #include <cstring>
 
 namespace morfcollector {
 
 namespace {
+
+constexpr int    kConnectTimeoutMs = 10000;               // connexion TCP
+constexpr long   kSessionTimeoutMs = 30000;               // chaque operation libssh2
+constexpr qint64 kMaxFileBytes     = 256LL * 1024 * 1024; // plafond de lecture en memoire
+
+// connect() avec delai : passage temporaire en non bloquant + select(). Sans cela,
+// un hote qui ne repond pas gele le thread de travail (et l'arret du service)
+// pendant le delai TCP systeme.
+bool connectWithTimeout(socket_t s, const struct sockaddr* addr, socklen_t len, int timeoutMs) {
+#ifdef _WIN32
+    u_long nb = 1;
+    ioctlsocket(s, FIONBIO, &nb);
+    const int rc = ::connect(s, addr, len);
+    bool ok = (rc == 0);
+    if (rc != 0 && WSAGetLastError() == WSAEWOULDBLOCK) {
+        fd_set wr, ex;
+        FD_ZERO(&wr); FD_ZERO(&ex); FD_SET(s, &wr); FD_SET(s, &ex);
+        timeval tv{ timeoutMs / 1000, (timeoutMs % 1000) * 1000 };
+        ok = (select(0, nullptr, &wr, &ex, &tv) > 0) && FD_ISSET(s, &wr);
+    }
+    nb = 0;
+    ioctlsocket(s, FIONBIO, &nb);
+    return ok;
+#else
+    const int flags = fcntl(s, F_GETFL, 0);
+    fcntl(s, F_SETFL, flags | O_NONBLOCK);
+    const int rc = ::connect(s, addr, len);
+    bool ok = (rc == 0);
+    if (rc != 0 && errno == EINPROGRESS) {
+        fd_set wr;
+        FD_ZERO(&wr); FD_SET(s, &wr);
+        timeval tv{ timeoutMs / 1000, (timeoutMs % 1000) * 1000 };
+        if (select(s + 1, nullptr, &wr, nullptr, &tv) > 0) {
+            int soErr = 0;
+            socklen_t el = sizeof(soErr);
+            ok = (getsockopt(s, SOL_SOCKET, SO_ERROR, &soErr, &el) == 0 && soErr == 0);
+        }
+    }
+    fcntl(s, F_SETFL, flags);
+    return ok;
+#endif
+}
 
 // Correspondance d'un fichier a la source (reprise de SiteWatch/LogDiscovery) :
 //   - `match` non vide  : le nom contient le motif (insensible a la casse) ;
@@ -107,7 +155,8 @@ public:
             outcome = IConnector::Outcome::Error; error = QStringLiteral("socket impossible");
             return false;
         }
-        if (::connect(s, res->ai_addr, static_cast<socklen_t>(res->ai_addrlen)) != 0) {
+        if (!connectWithTimeout(s, res->ai_addr, static_cast<socklen_t>(res->ai_addrlen),
+                                kConnectTimeoutMs)) {
             freeaddrinfo(res); closeSocket(s);
             outcome = IConnector::Outcome::Unreachable;
             error = QStringLiteral("connexion TCP impossible vers %1:%2")
@@ -120,8 +169,18 @@ public:
         session_ = libssh2_session_init();
         if (!session_) { outcome = IConnector::Outcome::Error; error = QStringLiteral("session SSH impossible"); return false; }
         libssh2_session_set_blocking(session_, 1);
+        // Delai sur chaque operation bloquante (handshake, auth, lecture) : un serveur
+        // qui se tait ne doit pas figer le thread de travail indefiniment.
+        libssh2_session_set_timeout(session_, kSessionTimeoutMs);
         if (libssh2_session_handshake(session_, s) != 0) {
             outcome = IConnector::Outcome::Unreachable; error = QStringLiteral("handshake SSH echoue");
+            return false;
+        }
+
+        // Cle d'hote verifiee AVANT l'authentification : sinon le mot de passe part
+        // vers n'importe quel faux serveur place sur le chemin.
+        if (!checkHostKey(params, error)) {
+            outcome = IConnector::Outcome::AuthFailed;
             return false;
         }
 
@@ -141,7 +200,7 @@ public:
         if (!handle) { error = QStringLiteral("ouverture du dossier distant impossible : %1").arg(dir); return false; }
         char name[512];
         LIBSSH2_SFTP_ATTRIBUTES attrs;
-        int rc;
+        ssize_t rc;
         while ((rc = libssh2_sftp_readdir(handle, name, sizeof(name), &attrs)) > 0) {
             const QString fn = QString::fromUtf8(name, rc);
             if (fn.endsWith(QStringLiteral(".gz"))) {
@@ -150,6 +209,12 @@ public:
             }
         }
         libssh2_sftp_closedir(handle);
+        // rc < 0 : la liste s'est interrompue en route. L'accepter reviendrait a
+        // croire que des fichiers n'existent pas ; on remonte l'erreur.
+        if (rc < 0) {
+            error = QStringLiteral("erreur de lecture du dossier distant : %1").arg(dir);
+            return false;
+        }
         return true;
     }
 
@@ -160,14 +225,49 @@ public:
         if (!handle) { error = QStringLiteral("ouverture distante impossible : %1").arg(remotePath); return false; }
         char buffer[32768];
         ssize_t n;
-        while ((n = libssh2_sftp_read(handle, buffer, sizeof(buffer))) > 0)
+        while ((n = libssh2_sftp_read(handle, buffer, sizeof(buffer))) > 0) {
+            // Plafond : tout le fichier est garde en memoire, un fichier enorme ou
+            // infini ne doit pas epuiser la RAM du Pi.
+            if (out.size() + static_cast<qint64>(n) > kMaxFileBytes) {
+                libssh2_sftp_close(handle);
+                out.clear();
+                error = QStringLiteral("fichier trop volumineux (> %1 Mio) : %2")
+                            .arg(kMaxFileBytes / (1024 * 1024)).arg(remotePath);
+                return false;
+            }
             out.append(buffer, static_cast<int>(n));
+        }
         libssh2_sftp_close(handle);
         if (n < 0) { error = QStringLiteral("erreur de lecture SFTP : %1").arg(remotePath); return false; }
         return true;
     }
 
 private:
+    bool checkHostKey(const QJsonObject& params, QString& error) {
+#ifdef LIBSSH2_HOSTKEY_HASH_SHA256
+        const char* h = libssh2_hostkey_hash(session_, LIBSSH2_HOSTKEY_HASH_SHA256);
+        const QByteArray seen = h ? QByteArray(h, 32) : QByteArray();
+#else
+        const QByteArray seen;
+#endif
+        const QString expected = params.value(QStringLiteral("host_key_sha256")).toString();
+        if (expected.isEmpty()) {
+            // Mode non verifie, explicite : journaliser l'empreinte pour que
+            // l'operateur puisse la renseigner (host_key_sha256) et fermer la faille.
+            qWarning().noquote()
+                << "morfCollector sftp : cle d'hote NON verifiee (host_key_sha256 absent) ;"
+                   " empreinte vue : SHA256:"
+                << QString::fromLatin1(seen.toBase64(QByteArray::OmitTrailingEquals));
+            return true;
+        }
+        if (!hostKeyMatches(seen, expected)) {
+            error = QStringLiteral("empreinte de cle d'hote differente de host_key_sha256 : "
+                                   "connexion refusee, aucun secret envoye");
+            return false;
+        }
+        return true;
+    }
+
     bool authenticate(const QJsonObject& creds, QString& error) {
         const std::string user = creds.value(QStringLiteral("user")).toString().toStdString();
         if (user.empty()) { error = QStringLiteral("credentials.user requis"); return false; }

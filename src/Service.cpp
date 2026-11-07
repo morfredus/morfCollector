@@ -66,7 +66,8 @@ Service::Service(ServiceConfig config, QObject* parent)
     : QObject(parent),
       m_config(std::move(config)),
       m_collector(new Collector(resolveDataRoot(m_config.storageRoot),
-                                resolveVaultRoot(m_config.vaultRoot), this)),
+                                resolveVaultRoot(m_config.vaultRoot),
+                                m_config.fsAllowedRoots, this)),
       m_http(new HttpServer(m_config, m_collector, this)) {}
 
 Service::~Service() = default;

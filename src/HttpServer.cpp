@@ -6,6 +6,7 @@
 
 #include "morfcollector/HttpServer.h"
 #include "morfcollector/Collector.h"
+#include "morfcollector/Guards.h"
 #include "morfcollector/SelfDescription.h"
 #include "morfcollector/Version.h"
 
@@ -20,6 +21,7 @@
 #include <QDateTime>
 #include <QUrl>
 #include <QUrlQuery>
+#include <QTimer>
 
 #include <utility>
 
@@ -27,6 +29,18 @@ namespace morfcollector {
 
 namespace {
 constexpr int kMaxRequestBytes = 1 << 20;   // 1 Mio : un manifeste peut etre gros
+constexpr int kIdleTimeoutMs   = 15000;     // connexion muette ou incomplete : coupee
+
+// Valeur d'un en-tete de requete (nom insensible a la casse), vide si absent.
+QByteArray headerValue(const QByteArray& headerBlock, const QByteArray& name) {
+    for (const QByteArray& line : headerBlock.split('\n')) {
+        const QByteArray l = line.trimmed();
+        const int colon = l.indexOf(':');
+        if (colon > 0 && l.left(colon).trimmed().toLower() == name.toLower())
+            return l.mid(colon + 1).trimmed();
+    }
+    return {};
+}
 
 QByteArray toJson(const QJsonObject& o) {
     return QJsonDocument(o).toJson(QJsonDocument::Compact);
@@ -82,7 +96,17 @@ quint16 HttpServer::port() const     { return m_server->isListening() ? m_server
 void HttpServer::onNewConnection() {
     while (m_server->hasPendingConnections()) {
         QTcpSocket* sock = m_server->nextPendingConnection();
-        connect(sock, &QTcpSocket::readyRead, this, [this, sock]() { onSocketReadyRead(sock); });
+        // Delai d'inactivite : sans lui, une connexion qui n'envoie jamais la fin de
+        // sa requete resterait ouverte (et son tampon en memoire) indefiniment.
+        auto* idle = new QTimer(sock);
+        idle->setSingleShot(true);
+        idle->setInterval(kIdleTimeoutMs);
+        connect(idle, &QTimer::timeout, sock, &QTcpSocket::abort);
+        idle->start();
+        connect(sock, &QTcpSocket::readyRead, this, [this, sock, idle]() {
+            idle->start();   // relance le delai a chaque octet recu
+            onSocketReadyRead(sock);
+        });
         connect(sock, &QTcpSocket::disconnected, sock, &QObject::deleteLater);
     }
 }
@@ -99,7 +123,8 @@ void HttpServer::onSocketReadyRead(QTcpSocket* sock) {
     }
 
     const QByteArray headerBlock = buf.left(headerEnd);
-    const int needed = contentLength(headerBlock);
+    const int needed = qMax(0, contentLength(headerBlock));
+    if (needed > kMaxRequestBytes) { sock->abort(); return; }
     const int bodyStart = headerEnd + 4;
     if (buf.size() - bodyStart < needed) {
         if (buf.size() > kMaxRequestBytes) { sock->abort(); return; }
@@ -114,6 +139,17 @@ void HttpServer::onSocketReadyRead(QTcpSocket* sock) {
     const QByteArray body   = buf.mid(bodyStart, needed);
 
     sock->setProperty("buf", QByteArray());
+
+    // Anti-CSRF : une page web visitee depuis le LAN peut emettre un POST/DELETE vers
+    // ce service. Les navigateurs joignent toujours Origin a une ecriture
+    // cross-origin ; les clients du parc (SiteWatch, curl...) n'en envoient pas.
+    const bool isWrite = (method == "POST" || method == "PUT" || method == "PATCH"
+                          || method == "DELETE");
+    if (isWrite && isCrossOrigin(headerValue(headerBlock, "origin"),
+                                 headerValue(headerBlock, "host"))) {
+        reply(sock, 403, "Forbidden", errorBody(QStringLiteral("cross_origin_forbidden")));
+        return;
+    }
     handleRequest(sock, method, path, body);
 }
 
@@ -132,7 +168,7 @@ void HttpServer::handleRequest(QTcpSocket* sock, const QByteArray& method,
             QByteArray resp;
             resp += "HTTP/1.1 200 OK\r\n";
             resp += "Content-Type: application/octet-stream\r\n";
-            resp += "Content-Disposition: attachment; filename=\"" + originalName.toUtf8() + "\"\r\n";
+            resp += "Content-Disposition: " + contentDisposition(originalName) + "\r\n";
             resp += "Content-Length: " + QByteArray::number(content.size()) + "\r\n";
             resp += "Access-Control-Allow-Origin: *\r\n";
             resp += "Connection: close\r\n\r\n";
@@ -155,7 +191,7 @@ void HttpServer::handleRequest(QTcpSocket* sock, const QByteArray& method,
     int        code   = 200;
     QByteArray reason = "OK";
     const QByteArray out = route(method, path, query, body, code, reason);
-    reply(sock, code, reason, out);
+    reply(sock, code, reason, out, method == "GET");
 }
 
 QByteArray HttpServer::route(const QByteArray& method, const QString& path,
@@ -349,12 +385,14 @@ QByteArray HttpServer::buildStatusJson() const {
     return toJson(o);
 }
 
-void HttpServer::reply(QTcpSocket* sock, int code, const QByteArray& reason, const QByteArray& body) {
+void HttpServer::reply(QTcpSocket* sock, int code, const QByteArray& reason,
+                       const QByteArray& body, bool cors) {
     QByteArray resp;
     resp += "HTTP/1.1 " + QByteArray::number(code) + " " + reason + "\r\n";
     resp += "Content-Type: application/json; charset=utf-8\r\n";
     resp += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
-    resp += "Access-Control-Allow-Origin: *\r\n";
+    if (cors)
+        resp += "Access-Control-Allow-Origin: *\r\n";
     resp += "Connection: close\r\n\r\n";
     resp += body;
     sock->write(resp);

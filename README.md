@@ -2,51 +2,31 @@
 
 *Read in another language: **English** (this document) · [Français](README.fr.md).*
 
-[![Version](https://img.shields.io/badge/version-0.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.10.1-blue)](CHANGELOG.md)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus)
 ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
 ![Build](https://img.shields.io/badge/CMake-3.21+-064F8C?logo=cmake)
 ![License](https://img.shields.io/badge/License-GPL--3.0--only-blue)
 
-**Reusable skeleton for morfSystem services.** Clone it, code the business logic
-in modules, and you get - for free - an HTTP API, a JSON config loader, a LAN
-announce (morfBeacon), a systemd service **and** a Windows service, all working
-first try.
+**Local collection and storage service for the morfSystem fleet.** A provider
+(SiteWatch, ...) pushes a manifest of sources; morfCollector pulls the objects
+into a local vault and keeps them, without ever interpreting them. It exposes an
+HTTP API, announces itself on the LAN (morfBeacon) and installs as a systemd
+**or** Windows service.
 
 Connectors currently include local files (`fs`), SFTP, and GitHub traffic
 (`github-traffic`) : morfCollector executes a manifest, it never decides what
 to collect.
 
-It is distilled from morfSensor and morfNotify: same architecture, no domain code.
+## What it provides
 
-## What you get out of the box
-
-- **`IModule` extension point** - plug your business logic as one or more modules
-  (a sensor, a notifier, a collector…). A working `ExampleModule` ships as a
-  starting point.
-- **HTTP API** (GET + POST) - `GET /status` (morfBeacon-compatible), `GET /healthz`,
-  `GET /modules`, `GET /modules/{id}`, and a `POST /example` showing body parsing.
-- **Config** - JSON file with a `modules` list; a factory turns it into modules.
+- **Collection engine** - declarative reconciliation of sources from the manifest,
+  per-source lifecycle, incremental synchronization, retention.
+- **HTTP API** - `GET /status` (morfBeacon-compatible), `GET /healthz`, manifest and
+  credentials endpoints, per-source actions (see `docs/fr/CONTRAT.md`).
+- **Vault and object store** - secrets and collected objects kept locally.
 - **LAN announce** - morfBeacon heartbeat (bundled, no external dependency).
-- **Service install** - `scripts/linux/` (systemd) and `scripts/windows/`
-  (Task Scheduler), copying binary + config to a fixed location.
-- **Clone helper** - `scripts/new-service.sh` / `.ps1` scaffolds a renamed project.
-
-## Bootstrap a new service
-
-```sh
-scripts/new-service.sh morfwatch morfWatch     # Linux/macOS
-# scripts\new-service.ps1 morfwatch morfWatch  # Windows
-```
-
-Creates `../morfWatch` with every name replaced (`morfCollector` →
-`morfWatch`, `morfcollector` → `morfwatch`, `MORFCOLLECTOR` → `MORFWATCH`). It
-compiles as-is. Then:
-
-1. Code your logic in `src/ExampleModule.*` (rename it) - implement `IModule`.
-2. Register your type(s) in `src/ModuleFactory.cpp` + `knownTypes()`.
-3. Adapt the HTTP routes (`src/HttpServer.cpp`) and CMake source list.
-4. Update the comments / config / docs.
+- **Service install** - `service.py` (systemd, Windows services, launchd).
 
 ## Build
 
@@ -61,9 +41,24 @@ cmake --build --preset mingw
 ## Run
 
 ```sh
-./build-mingw/service/morfcollector.exe          # 'example' module fallback
-curl http://127.0.0.1:8792/modules
+./build-mingw/service/morfcollector.exe
+curl http://127.0.0.1:8792/status
 ```
+
+## Security settings
+
+- **`fs` connector allow-list**: a `fs` source is accepted only under a root listed in
+  `fs_allowed_roots` in the admin configuration file (`/etc/morfsystem/morfcollector/`, read-only,
+  never changed through the API). Without that list every `fs` source is refused. Symbolic links and
+  the vault/store folders are always refused.
+  ```json
+  "fs_allowed_roots": ["/mnt/nas/logs"]
+  ```
+- **SFTP host key**: set `host_key_sha256` in the source params (hex, or `SHA256:<base64>` as printed
+  by `ssh-keygen -lf`) so the key is checked before any secret is sent. Without it the key is not
+  verified and the fingerprint seen is written to the log.
+- **Browser writes**: a write (POST/DELETE) carrying an `Origin` different from `Host` gets
+  `403 cross_origin_forbidden`; non-browser clients are unaffected.
 
 ## Install as a service
 
@@ -82,8 +77,8 @@ platform (systemd, Windows, launchd).
 
 ## Documentation
 
-French documentation in [`docs/fr/`](docs/fr/README.md): architecture, and a
-step-by-step guide to turn this template into your service.
+French documentation in [`docs/fr/`](docs/fr/README.md): the `morfcollect/1` contract,
+architecture, and the provider integration guide.
 
 ## License
 

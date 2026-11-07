@@ -16,7 +16,7 @@ namespace morfcollector {
 
 inline QString version() { return QStringLiteral(MORFCOLLECTOR_VERSION); }
 
-// Version du protocole HTTP/JSON expose. >>> A ADAPTER si l'API change. <<<
+// Version du protocole HTTP/JSON expose (a incrementer si l'API change).
 inline constexpr const char* kProtocol = "morfcollector/1";
 
 } // namespace morfcollector

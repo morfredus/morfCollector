@@ -12,6 +12,8 @@
 #include <QSet>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QFuture>
+#include <QList>
 
 #include "morfbeacon/IMetricsProvider.h"
 #include "morfcollector/SourceRegistry.h"
@@ -39,7 +41,9 @@ public:
     // dataRoot  : objets collectes + index (source de verite).
     // vaultRoot : coffre de secrets, distinct de dataRoot (la cle ne doit jamais
     //             voyager avec une copie des donnees).
-    explicit Collector(QString dataRoot, QString vaultRoot, QObject* parent = nullptr);
+    // fsAllowedRoots : liste blanche (config admin) du connecteur `fs`.
+    explicit Collector(QString dataRoot, QString vaultRoot,
+                       QStringList fsAllowedRoots = {}, QObject* parent = nullptr);
     ~Collector() override;
 
     // --- Manifeste (CONTRAT.md §4) ------------------------------------------
@@ -99,6 +103,7 @@ private:
     QHash<QString, IConnector*>  m_connectors;      // name -> connecteur
     QHash<QString, qint64>       m_inFlight;         // source -> debut (epoch s) des collectes en cours
     QTimer*                      m_scheduler = nullptr;
+    QList<QFuture<void>>         m_jobs;             // travaux en vol, attendus par le destructeur
 };
 
 } // namespace morfcollector

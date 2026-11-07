@@ -1,18 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # =============================================================================
-#  morfCollector - squelette reutilisable de service morfSystem.
-#
-#  POUR CREER UN NOUVEAU SERVICE : le plus simple est le script de clonage
-#      scripts/new-service.sh   morfmonservice MorfMonService   (Linux/macOS)
-#      scripts/new-service.ps1  morfmonservice MorfMonService   (Windows)
-#  qui copie ce projet en remplacant les noms. Sinon, remplacer a la main :
-#      morfCollector  (nom du projet / bibliotheque)
-#      morfcollector         (namespace, dossier include, binaire, unite systemd)
-#      MORFCOLLECTOR         (prefixe de macro)
-#
-#  Ensuite : coder le metier dans src/ExampleModule.* (ou de nouveaux modules),
-#  adapter la fabrique (src/ModuleFactory.cpp) et la liste de sources ci-dessous.
+#  morfCollector - service de collecte et de conservation locale (morfSystem).
 # =============================================================================
 
 # Version pilotee par le fichier VERSION (convention morfSystem).
@@ -125,6 +114,7 @@ endif()
 # DONNEES (connecteurs concrets, index sur disque, coffre chiffre, retention)
 # s'ajoutera ici, derriere des interfaces (voir docs/fr/CONTRAT.md).
 add_library(morfCollector STATIC
+    src/Guards.cpp
     src/Manifest.cpp
     src/Source.cpp
     src/SourceRegistry.cpp
@@ -135,6 +125,7 @@ add_library(morfCollector STATIC
     src/Collector.cpp
     src/HttpServer.cpp
     src/Service.cpp
+    include/morfcollector/Guards.h
     include/morfcollector/Domain.h
     include/morfcollector/Manifest.h
     include/morfcollector/Source.h
@@ -190,6 +181,12 @@ add_subdirectory(service)
 
 # Signale la duree de compile a morfAnalytics apres le lien du binaire de service.
 morf_record_target_build(morfcollector "morfCollector")
+
+# --- Tests natifs (ctest) : garde-fous purs + durabilite coffre/index ----------
+enable_testing()
+add_executable(test_guards tests/test_guards.cpp)
+target_link_libraries(test_guards PRIVATE morfCollector::morfCollector Qt6::Core)
+add_test(NAME guards COMMAND test_guards)
 
 # --- Exemple (compile seulement en build autonome, pas via add_subdirectory) -
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

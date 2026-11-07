@@ -1,7 +1,7 @@
 # Emplacements des fichiers - morfCollector
 
 morfCollector suit la doctrine du parc morfSystem (référence complète :
-`morfTemplateService/docs/fr/FILESYSTEM.md`). Ce document précise sa disposition
+`morfSystem/docs/FILESYSTEM.md`). Ce document précise sa disposition
 propre.
 
 ## Les trois zones

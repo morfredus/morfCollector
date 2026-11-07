@@ -31,7 +31,7 @@
     "linux": "/var/lib/morfsystem/morfcollector",
     "windows": "%ProgramData%/morfsystem/morfcollector/state"
   },
-  "_comment_purge": "Donnees effacables (voir morfTemplateService pour le contrat). Le coffre (vault/) et les donnees collectees (data/) vivent par defaut sous state_dir, mais 'vault_root'/'storage_root' de la config permettent de les relocaliser : 'from_config' fait lire a morfdeploy le vrai emplacement dans la config deployee (repli sur state/vault et state/data si la cle est absente ou vide). Purges destructrices : le coffre contient la cle et les secrets ; data/ contient les collectes conservees. Rien d'autre n'est touche.",
+  "_comment_purge": "Donnees effacables (contrat : morfSystem/docs/FILESYSTEM.md). Le coffre (vault/) et les donnees collectees (data/) vivent par defaut sous state_dir, mais 'vault_root'/'storage_root' de la config permettent de les relocaliser : 'from_config' fait lire a morfdeploy le vrai emplacement dans la config deployee (repli sur state/vault et state/data si la cle est absente ou vide). Purges destructrices : le coffre contient la cle et les secrets ; data/ contient les collectes conservees. Rien d'autre n'est touche.",
   "purge": [
     {
       "id": "vault",

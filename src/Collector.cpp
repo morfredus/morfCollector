@@ -82,6 +82,8 @@ CollectResult runJob(IConnector* connector, const QJsonObject& params,
         // supprime pas (son etat conserve reste disponible).
         QByteArray bytes;
         const IConnector::Outcome fo = connector->fetch(params, creds, item.name, bytes, error);
+        // Echec partiel : on garde les items DEJA recuperes (r.items) pour que le
+        // commit les conserve ; l'issue d'erreur est simplement reportee dessus.
         if (fo != IConnector::Outcome::Ok) { r.outcome = fo; r.error = error; return r; }
         r.items.push_back({ item.name, bytes, item.period });
     }
@@ -90,16 +92,19 @@ CollectResult runJob(IConnector* connector, const QJsonObject& params,
 }
 } // namespace
 
-Collector::Collector(QString dataRoot, QString vaultRoot, QObject* parent)
+Collector::Collector(QString dataRoot, QString vaultRoot, QStringList fsAllowedRoots,
+                     QObject* parent)
     : QObject(parent),
-      m_store(std::move(dataRoot)),
-      m_vault(std::move(vaultRoot)) {
+      m_store(dataRoot),
+      m_vault(vaultRoot) {
     m_store.init();
     m_vault.init();
 
     // Plan de donnees : enregistrement des connecteurs. Chacun declare sa
     // capacite, surfacee dans /status (CONTRAT.md §2, §7.2).
-    registerConnector(new FsConnector());
+    // Le coffre et le magasin sont interdits au connecteur `fs` meme sous une racine
+    // autorisee : sinon une source pourrait collecter vault.key puis la servir.
+    registerConnector(new FsConnector(std::move(fsAllowedRoots), { dataRoot, vaultRoot }));
     registerConnector(new GitHubTrafficConnector());
 #ifdef MORFCOLLECTOR_HAVE_SFTP
     registerConnector(new SftpConnector());
@@ -114,6 +119,15 @@ Collector::Collector(QString dataRoot, QString vaultRoot, QObject* parent)
 }
 
 Collector::~Collector() {
+    // Les travaux QtConcurrent en vol utilisent les connecteurs : les attendre AVANT
+    // de les supprimer (sinon use-after-free). On coupe d'abord le commit (signal
+    // finished) : l'objet est en cours de destruction. Les delais reseau des
+    // connecteurs bornent l'attente.
+    m_scheduler->stop();
+    for (auto* w : findChildren<QFutureWatcherBase*>())
+        w->disconnect();
+    for (QFuture<void>& job : m_jobs)
+        job.waitForFinished();
     for (IConnector* c : m_connectors)
         delete c;
 }
@@ -304,19 +318,17 @@ void Collector::startCollection(Source* s) {
         const CollectResult r = watcher->result();
         watcher->deleteLater();
         m_inFlight.remove(id);
+        m_jobs.removeIf([](const QFuture<void>& j) { return j.isFinished(); });
 
         // La source a pu disparaitre (retrait + suppression) pendant le travail.
         Source* s2 = m_sources.find(id);
         if (!s2)
             return;
 
-        if (r.outcome != IConnector::Outcome::Ok) {
-            s2->setOperationalState(opStateFor(r.outcome));
-            s2->setLastError(r.error);
-            return;
-        }
-
-        // Commit sur le thread principal : ecriture dans l'ObjectStore.
+        // Commit sur le thread principal : ecriture dans l'ObjectStore. Fait AVANT de
+        // regarder l'issue : un echec partiel (un fichier sur dix en erreur) ne doit
+        // pas jeter les fichiers deja recuperes ; la taille connue mise a jour evite
+        // aussi de les retelecharger a la prochaine collecte.
         for (const Fetched& f : r.items) {
             bool ok = false;
             m_store.put(id, f.name, f.bytes, f.period, ok);
@@ -326,13 +338,20 @@ void Collector::startCollection(Source* s) {
                 return;
             }
         }
+        if (r.outcome != IConnector::Outcome::Ok) {
+            s2->setOperationalState(opStateFor(r.outcome));
+            s2->setLastError(r.error);
+            return;
+        }
         m_store.applyRetention(id, retention);
         s2->setLastCollectTs(QDateTime::currentSecsSinceEpoch());
         s2->clearLastError();
         s2->setOperationalState(OperationalState::Waiting);
     });
 
-    watcher->setFuture(QtConcurrent::run(runJob, connector, params, creds, knownSizes));
+    const QFuture<CollectResult> job = QtConcurrent::run(runJob, connector, params, creds, knownSizes);
+    m_jobs.append(QFuture<void>(job));
+    watcher->setFuture(job);
 }
 
 void Collector::onSchedulerTick() {

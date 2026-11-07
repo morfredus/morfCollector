@@ -1,7 +1,7 @@
 # Documentation de morfCollector (français)
 
-Squelette réutilisable des services morfSystem : API HTTP, config JSON, annonce
-LAN (morfBeacon), service systemd et Windows. On clone, on code le métier.
+Service de collecte et de conservation locale du parc morfSystem : API HTTP,
+annonce LAN (morfBeacon), service systemd et Windows.
 
 > 🇬🇧 English documentation: [`docs/en/`](../en/README.md) *(index, in progress)*.
 > Retour au [README (français)](../../README.fr.md).
@@ -22,5 +22,5 @@ LAN (morfBeacon), service systemd et Windows. On clone, on code le métier.
 | [README](../../README.md) | Présentation générale (anglais). |
 | [README (français)](../../README.fr.md) | Présentation générale (français). |
 | [Journal des versions](../../CHANGELOG.md) | Historique des versions. |
-| [Roadmap](../../ROADMAP.md) | Évolutions envisagées du template. |
-| [Contribuer](../../CONTRIBUTING.md) | Guide de contribution au template. |
+| [Roadmap](../../ROADMAP.md) | Évolutions envisagées. |
+| [Contribuer](../../CONTRIBUTING.md) | Guide de contribution. |

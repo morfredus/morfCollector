@@ -22,6 +22,11 @@
 //   "port"       : port SSH (facultatif, defaut 22)
 //   "match"      : sous-chaine que le nom doit contenir (mode generique)
 //   "site_key"   : nom de site pour le mode o2switch (prefixe avant le 1er point)
+//   "host_key_sha256" : empreinte SHA-256 attendue de la cle d'hote (hex, avec ou
+//                  sans ':', ou "SHA256:<base64>" comme `ssh-keygen -lf`). VERIFIEE
+//                  avant l'authentification : si elle differe, la connexion est
+//                  refusee et AUCUN secret ne part. Absente => mode non verifie
+//                  (l'empreinte vue est journalisee pour la renseigner ensuite).
 // credentials (coffre) :
 //   "user"        : utilisateur SSH (obligatoire)
 //   "password"    : mot de passe (facultatif)

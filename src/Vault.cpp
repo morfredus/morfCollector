@@ -10,11 +10,18 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
+#include <QSaveFile>
+#include <QDebug>
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
 #include <utility>
+
+#ifdef Q_OS_UNIX
+#  include <sys/stat.h>
+#endif
 
 namespace morfcollector {
 
@@ -32,8 +39,21 @@ bool Vault::init() {
     QDir().mkpath(m_root);
     if (!loadKey())
         return false;
+    // Un coffre ABSENT demarre vide ; un coffre PRESENT mais indechiffrable (cle
+    // changee, fichier corrompu) ne doit JAMAIS repartir vide : le prochain put()
+    // l'ecraserait et detruirait les secrets restants. On garde une copie .bak et on
+    // reste indisponible (m_ready=false => 503 explicite sur POST /credentials).
+    if (!load()) {
+        const QString enc = QDir(m_root).filePath(QStringLiteral("vault.enc"));
+        const QString bak = enc + QStringLiteral(".bak");
+        if (!QFile::exists(bak))
+            QFile::copy(enc, bak);
+        m_secrets.clear();
+        qWarning().noquote() << "morfCollector : coffre illisible, service coffre desactive"
+                                " (copie conservee dans" << bak << ")";
+        return false;
+    }
     m_ready = true;
-    load();   // un coffre absent ou illisible => on demarre vide (pas d'echec dur)
     return true;
 }
 
@@ -48,17 +68,31 @@ bool Vault::loadKey() {
         m_key = kf.readAll();
         return m_key.size() == kKeyLen;
     }
+    // Coffre present sans sa cle : en generer une neuve rendrait le coffre
+    // definitivement indechiffrable. Refuser plutot que de masquer la perte.
+    if (QFile::exists(QDir(m_root).filePath(QStringLiteral("vault.enc")))) {
+        qWarning() << "morfCollector : vault.enc present mais vault.key absente";
+        return false;
+    }
     // Premiere fois : generer une cle aleatoire et la conserver, permissions
     // restreintes au proprietaire.
     m_key.resize(kKeyLen);
     if (RAND_bytes(reinterpret_cast<unsigned char*>(m_key.data()), kKeyLen) != 1)
         return false;
-    if (!kf.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return false;
-    kf.write(m_key);
-    kf.close();
-    QFile::setPermissions(keyPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    return true;
+#ifdef Q_OS_UNIX
+    const mode_t oldMask = umask(077);   // aucun instant ou la cle serait lisible par d'autres
+#endif
+    // QSaveFile : ecriture dans un fichier temporaire (0600) puis renommage ; les
+    // permissions sont posees AVANT commit, la cle n'est jamais visible en 0644.
+    QSaveFile sf(keyPath);
+    bool ok = sf.open(QIODevice::WriteOnly)
+        && sf.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner)
+        && sf.write(m_key) == m_key.size()
+        && sf.commit();
+#ifdef Q_OS_UNIX
+    umask(oldMask);
+#endif
+    return ok;
 }
 
 // --- Chiffrement AES-256-GCM -------------------------------------------------
@@ -155,8 +189,12 @@ bool Vault::load() {
     const QByteArray blob = f.readAll();
     QByteArray plain;
     if (!decrypt(blob, plain))
-        return false;   // cle changee ou coffre corrompu : on repart d'un coffre vide
-    const QJsonObject root = QJsonDocument::fromJson(plain).object();
+        return false;   // cle changee ou coffre corrompu : l'appelant NE repart PAS de vide
+    QJsonParseError pe{};
+    const QJsonDocument doc = QJsonDocument::fromJson(plain, &pe);
+    if (pe.error != QJsonParseError::NoError || !doc.isObject())
+        return false;
+    const QJsonObject root = doc.object();
     for (auto it = root.constBegin(); it != root.constEnd(); ++it)
         m_secrets.insert(it.key(), it.value().toObject());
     return true;
@@ -173,13 +211,14 @@ bool Vault::save() {
     if (!encrypt(plain, blob))
         return false;
     const QString path = QDir(m_root).filePath(QStringLiteral("vault.enc"));
-    QFile f(path);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    // QSaveFile : un disque plein ou un arret en cours d'ecriture laisse l'ancien
+    // vault.enc intact (renommage atomique au commit). Permissions AVANT commit.
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly)
+        || !f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner)
+        || f.write(blob) != blob.size())
         return false;
-    f.write(blob);
-    f.close();
-    QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    return true;
+    return f.commit();
 }
 
 // --- API interne -------------------------------------------------------------

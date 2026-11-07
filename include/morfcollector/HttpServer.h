@@ -64,7 +64,10 @@ private:
                      int& code, QByteArray& reason);
 
     QByteArray buildStatusJson() const;
-    void reply(QTcpSocket* sock, int code, const QByteArray& reason, const QByteArray& body);
+    // cors=true (GET en lecture seule uniquement) ajoute Access-Control-Allow-Origin.
+    // Jamais sur une ecriture : une page web ne doit pas pouvoir en lire le resultat.
+    void reply(QTcpSocket* sock, int code, const QByteArray& reason, const QByteArray& body,
+               bool cors = false);
 
     ServiceConfig m_config;
     Collector*    m_collector;

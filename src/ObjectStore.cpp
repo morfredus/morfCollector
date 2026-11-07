@@ -5,6 +5,7 @@
  */
 
 #include "morfcollector/ObjectStore.h"
+#include "morfcollector/Guards.h"
 
 #include <QDir>
 #include <QFile>
@@ -16,6 +17,9 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QSet>
+#include <QSaveFile>
+#include <QJsonParseError>
+#include <QDebug>
 
 #include <algorithm>
 #include <utility>
@@ -24,19 +28,7 @@ namespace morfcollector {
 
 namespace {
 // Nom de fichier sur disque, derive d'un nom d'origine potentiellement hostile.
-QString safeName(const QString& name) {
-    QString s;
-    s.reserve(name.size());
-    for (const QChar c : name) {
-        if (c.isLetterOrNumber() || c == '.' || c == '-' || c == '_')
-            s.append(c);
-        else
-            s.append('_');
-    }
-    if (s.isEmpty())
-        s = QStringLiteral("object");
-    return s;
-}
+QString safeName(const QString& name) { return sanitizeFileName(name); }
 } // namespace
 
 ObjectStore::ObjectStore(QString root) : m_root(std::move(root)) {}
@@ -49,11 +41,15 @@ bool ObjectStore::init() {
     if (m_root.isEmpty())
         return false;
     QDir().mkpath(QDir(m_root).filePath(QStringLiteral("objects")));
-    return loadIndex();
+    m_ready = loadIndex();
+    if (!m_ready)
+        qWarning().noquote() << "morfCollector : index des objets inutilisable :" << m_error;
+    return m_ready;
 }
 
 CollectedObject ObjectStore::put(const QString& sourceId, const QString& originalName,
                                  const QByteArray& bytes, const QString& period, bool& ok) {
+    if (!m_ready) { ok = false; return CollectedObject(); }   // index non charge : ne rien ecraser
     // Upsert par (source, nom d'origine) : chez la source, un fichier NOMME est UNE
     // entite dont on conserve le DERNIER etat. Les .gz surveilles sont append-only
     // (un log mensuel qui se complete au fil de l'eau) : recollecter un nom deja
@@ -85,11 +81,13 @@ CollectedObject ObjectStore::put(const QString& sourceId, const QString& origina
     // fichier (Truncate), l'ancien contenu est remplace sans laisser d'orphelin.
     o.storedPath = QDir(dir).filePath(o.objectId + QStringLiteral("__") + safeName(originalName));
 
-    QFile f(o.storedPath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) { ok = false; return o; }
-    const bool written = (f.write(bytes) == bytes.size());
-    f.close();
-    if (!written) { ok = false; return o; }
+    // QSaveFile : si l'ecriture echoue (disque plein), l'ancien etat de cet objet
+    // reste intact au lieu d'etre tronque.
+    QSaveFile f(o.storedPath);
+    if (!f.open(QIODevice::WriteOnly) || f.write(bytes) != bytes.size() || !f.commit()) {
+        ok = false;
+        return o;
+    }
 
     m_objects.insert(o.objectId, o);
     ok = writeIndex();
@@ -237,11 +235,11 @@ bool ObjectStore::writeIndex() const {
         arr.append(j);
     }
     const QByteArray data = QJsonDocument(arr).toJson(QJsonDocument::Indented);
-    QFile f(QDir(m_root).filePath(QStringLiteral("index.json")));
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    // QSaveFile : l'index n'est jamais vu tronque, meme en cas de coupure.
+    QSaveFile f(QDir(m_root).filePath(QStringLiteral("index.json")));
+    if (!f.open(QIODevice::WriteOnly) || f.write(data) != data.size())
         return false;
-    f.write(data);
-    return true;
+    return f.commit();
 }
 
 bool ObjectStore::loadIndex() {
@@ -249,9 +247,23 @@ bool ObjectStore::loadIndex() {
     QFile f(QDir(m_root).filePath(QStringLiteral("index.json")));
     if (!f.exists())
         return true;   // rien a charger : index vide, pas une erreur
-    if (!f.open(QIODevice::ReadOnly))
+    if (!f.open(QIODevice::ReadOnly)) {
+        m_error = QStringLiteral("index.json illisible : %1").arg(f.errorString());
         return false;
-    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    }
+    QJsonParseError pe{};
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &pe);
+    if (pe.error != QJsonParseError::NoError || !doc.isArray()) {
+        m_error = QStringLiteral("index.json invalide (%1, offset %2)")
+                      .arg(pe.errorString()).arg(pe.offset);
+        // Garder la preuve, puis reconstruire plutot que repartir d'un index vide.
+        const QString path = f.fileName();
+        f.close();
+        QFile::remove(path + QStringLiteral(".corrupt"));
+        QFile::rename(path, path + QStringLiteral(".corrupt"));
+        qWarning().noquote() << "morfCollector :" << m_error << "- reconstruction depuis les fichiers";
+        return rebuildIndex();
+    }
     for (const QJsonValue& v : doc.array()) {
         const QJsonObject j = v.toObject();
         CollectedObject o;
@@ -265,6 +277,40 @@ bool ObjectStore::loadIndex() {
         o.period       = j.value("period").toString();
         if (!o.objectId.isEmpty())
             m_objects.insert(o.objectId, o);
+    }
+    return true;
+}
+
+// Reconstruction best-effort : le nom d'origine n'est connu que sous sa forme
+// assainie (les caracteres exotiques sont deja perdus dans le nom de fichier), la
+// periode n'est pas recalculee. Mieux qu'un index vide qui orphelinerait tout.
+bool ObjectStore::rebuildIndex() {
+    m_objects.clear();
+    const QDir objects(QDir(m_root).filePath(QStringLiteral("objects")));
+    for (const QFileInfo& sd : objects.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QFileInfoList files = QDir(sd.absoluteFilePath()).entryInfoList(QDir::Files);
+        for (const QFileInfo& fi : files) {
+            const int sep = fi.fileName().indexOf(QStringLiteral("__"));
+            if (sep <= 0)
+                continue;
+            QFile f(fi.absoluteFilePath());
+            if (!f.open(QIODevice::ReadOnly))
+                continue;
+            CollectedObject o;
+            o.objectId     = fi.fileName().left(sep);
+            o.sourceId     = sd.fileName();
+            o.originalName = fi.fileName().mid(sep + 2);
+            o.storedPath   = fi.absoluteFilePath();
+            o.size         = fi.size();
+            o.hash         = QString::fromLatin1(
+                QCryptographicHash::hash(f.readAll(), QCryptographicHash::Sha256).toHex());
+            o.collectedAt  = fi.lastModified().toSecsSinceEpoch();
+            m_objects.insert(o.objectId, o);
+        }
+    }
+    if (!writeIndex()) {
+        m_error = QStringLiteral("reconstruction de l'index impossible (ecriture)");
+        return false;
     }
     return true;
 }

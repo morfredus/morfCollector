@@ -34,7 +34,7 @@ contrat ; ils n'y figurent que comme vocabulaire.
 
 > ### État de gel
 > **`morfcollect/1` est gelé** (27/07/2026). Tous les arbitrages sont tranchés :
-> l'implémentation peut désormais remplacer les `ExampleModule` par `Source`,
+> l'implémentation peut désormais s'appuyer sur `Source`,
 > `Connector`, `CollectionTask`, `CollectedObject` et `RetentionPolicy`, en
 > respectant ce contrat. Toute évolution ultérieure se fait **par ajout de clés
 > optionnelles** (voir §1.6) ; un changement incompatible incrémenterait `proto`.
@@ -666,8 +666,8 @@ Ce que ce contrat **ne fige pas** : le langage et les classes, le format de
 l'index (SQLite, JSON...), l'ordonnanceur, la disposition sur le disque, et le
 détail interne de chaque connecteur (objet de son propre sous-contrat).
 
-> `morfcollect/1` est **gelé**. L'implémentation peut remplacer les
-> `ExampleModule` par `Source`, `Connector`, `CollectionTask`, `CollectedObject`
+> `morfcollect/1` est **gelé**. L'implémentation s'appuie sur
+> `Source`, `Connector`, `CollectionTask`, `CollectedObject`
 > et `RetentionPolicy`, en respectant ce contrat. Toute évolution se fait par
 > ajout de clés optionnelles ; seul un changement incompatible incrémenterait
 > `proto`.

@@ -6,6 +6,8 @@
 
 #pragma once
 #include <QString>
+#include <QStringList>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QtGlobal>
 
@@ -34,6 +36,12 @@ struct ServiceConfig {
     // deja les secrets de la machine.
     QString vaultRoot;
 
+    // Racines AUTORISEES pour le connecteur `fs` (liste blanche). Vient UNIQUEMENT de
+    // ce fichier de config ADMIN (/etc, lecture seule), jamais du manifeste ni de
+    // l'API : un client du LAN ne peut donc pas l'elargir. Vide (defaut) => le
+    // connecteur `fs` refuse toute source.
+    QStringList fsAllowedRoots;
+
     // Port de service morfCollector (bloc de service 8787-8799), reserve dans
     // 'ports.allocations' de morfTools/ecosystem.json. C'est le defaut COMPILE :
     // il s'applique quand aucun fichier de configuration n'est trouve. Il doit
@@ -55,6 +63,10 @@ struct ServiceConfig {
         if (root.contains("bind_address")) c.bindAddress = root.value("bind_address").toString(c.bindAddress);
         if (root.contains("storage_root")) c.storageRoot = root.value("storage_root").toString(c.storageRoot);
         if (root.contains("vault_root"))   c.vaultRoot   = root.value("vault_root").toString(c.vaultRoot);
+
+        for (const QJsonValue& v : root.value("fs_allowed_roots").toArray())
+            if (!v.toString().isEmpty())
+                c.fsAllowedRoots << v.toString();
 
         const QJsonObject beacon = root.value("beacon").toObject();
         if (beacon.contains("enabled"))     c.beaconEnabled    = beacon.value("enabled").toBool(c.beaconEnabled);

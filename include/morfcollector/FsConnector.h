@@ -7,6 +7,10 @@
 #pragma once
 #include "morfcollector/IConnector.h"
 
+#include <QStringList>
+
+#include <utility>
+
 // -----------------------------------------------------------------------------
 // FsConnector : connecteur `fs`, premier connecteur concret (CONTRAT.md §2).
 //
@@ -21,11 +25,21 @@
 //   "match"      : sous-chaine que le nom doit contenir (facultatif, insensible casse)
 //   "match_mode" : "generic" (defaut). Reserve pour futures strategies.
 // Aucun secret : credentials ignore.
+//
+// SECURITE : "dir" vient du manifeste (donc d'un client du LAN). Il n'est accepte
+// que sous une racine de la liste blanche 'fs_allowed_roots' de la config ADMIN
+// (lecture seule, jamais modifiable par l'API). Sans liste blanche, le connecteur
+// refuse tout. Les liens symboliques et les dossiers du coffre/magasin sont refuses.
 // -----------------------------------------------------------------------------
 namespace morfcollector {
 
 class FsConnector : public IConnector {
 public:
+    // allowedRoots : racines autorisees (config admin) ; forbidden : dossiers
+    // interdits meme sous une racine (coffre, magasin d'objets).
+    FsConnector(QStringList allowedRoots, QStringList forbidden)
+        : m_roots(std::move(allowedRoots)), m_forbidden(std::move(forbidden)) {}
+
     QString name() const override       { return QStringLiteral("fs"); }
     int     version() const override    { return 1; }
     QString capability() const override { return QStringLiteral("fs"); }
@@ -35,6 +49,10 @@ public:
                  QVector<RemoteItem>& out, QString& error) override;
     Outcome fetch(const QJsonObject& params, const QJsonObject& credentials,
                   const QString& name, QByteArray& out, QString& error) override;
+
+private:
+    QStringList m_roots;
+    QStringList m_forbidden;
 };
 
 } // namespace morfcollector

@@ -36,9 +36,10 @@ class Vault {
 public:
     explicit Vault(QString root);
 
-    // Charge la cle (ou la genere) puis dechiffre le coffre existant. false si le
-    // chiffrement n'est pas disponible ou si le coffre est illisible (cle changee,
-    // fichier corrompu) -- dans ce cas le coffre demarre vide plutot que de planter.
+    // Charge la cle (ou la genere au tout premier demarrage) puis dechiffre le
+    // coffre existant. false (et ready()==false) si le chiffrement est indisponible
+    // ou si un coffre PRESENT est illisible (cle changee, fichier corrompu) : il
+    // n'est alors jamais remplace par un coffre vide, une copie .bak est conservee.
     bool init();
 
     // Remise unique d'un secret. Re-chiffre et persiste immediatement.

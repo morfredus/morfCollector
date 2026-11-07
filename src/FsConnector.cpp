@@ -5,6 +5,7 @@
  */
 
 #include "morfcollector/FsConnector.h"
+#include "morfcollector/Guards.h"
 
 #include <QDir>
 #include <QFile>
@@ -31,25 +32,22 @@ QString periodFromName(const QString& name) {
 
 bool FsConnector::validate(const QJsonObject& params, QString& error) const {
     const QString dir = params.value(QStringLiteral("dir")).toString();
-    if (dir.isEmpty()) {
-        error = QStringLiteral("params.dir requis pour le connecteur 'fs'");
-        return false;
-    }
-    return true;
+    return !validateFsDir(dir, m_roots, m_forbidden, error).isEmpty();
 }
 
 IConnector::Outcome FsConnector::list(const QJsonObject& params, const QJsonObject& /*credentials*/,
                                       QVector<RemoteItem>& out, QString& error) {
-    const QString dirPath = params.value(QStringLiteral("dir")).toString();
-    const QString match   = params.value(QStringLiteral("match")).toString();
+    const QString match = params.value(QStringLiteral("match")).toString();
 
-    QDir dir(dirPath);
-    if (!dir.exists()) {
-        error = QStringLiteral("dossier introuvable : %1").arg(dirPath);
-        return Outcome::Unreachable;
-    }
+    // Revalider a chaque appel : la liste blanche est la seule autorite, meme si
+    // le dossier a ete remplace par un lien depuis la validation.
+    const QString canon = validateFsDir(params.value(QStringLiteral("dir")).toString(),
+                                        m_roots, m_forbidden, error);
+    if (canon.isEmpty())
+        return Outcome::Error;
 
-    const QFileInfoList entries = dir.entryInfoList(QDir::Files, QDir::Name);
+    // NoSymLinks : un lien dans le dossier ne doit pas exposer un fichier d'ailleurs.
+    const QFileInfoList entries = QDir(canon).entryInfoList(QDir::Files | QDir::NoSymLinks, QDir::Name);
     for (const QFileInfo& fi : entries) {
         const QString n = fi.fileName();
         if (!match.isEmpty() && !n.contains(match, Qt::CaseInsensitive))
@@ -65,13 +63,15 @@ IConnector::Outcome FsConnector::list(const QJsonObject& params, const QJsonObje
 
 IConnector::Outcome FsConnector::fetch(const QJsonObject& params, const QJsonObject& /*credentials*/,
                                        const QString& name, QByteArray& out, QString& error) {
-    const QString dirPath = params.value(QStringLiteral("dir")).toString();
+    const QString canon = validateFsDir(params.value(QStringLiteral("dir")).toString(),
+                                        m_roots, m_forbidden, error);
+    if (canon.isEmpty())
+        return Outcome::Error;
 
-    // Securite : on ne recupere qu'un fichier du dossier declare, jamais un
-    // chemin remonte par "..".
-    const QFileInfo fi(QDir(dirPath), name);
-    const QString canonicalDir = QDir(dirPath).canonicalPath();
-    if (fi.fileName() != name || !fi.absoluteFilePath().startsWith(canonicalDir)) {
+    // On ne recupere qu'un fichier DIRECT du dossier valide : ni chemin, ni lien.
+    const QFileInfo fi(QDir(canon), name);
+    if (name.isEmpty() || fi.fileName() != name || fi.isSymLink()
+        || !isPathUnder(fi.canonicalFilePath(), canon)) {
         error = QStringLiteral("nom de ressource invalide : %1").arg(name);
         return Outcome::Error;
     }
