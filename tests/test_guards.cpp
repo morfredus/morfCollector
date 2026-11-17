@@ -23,7 +23,9 @@ static int g_failed = 0;
 static void touch(const QString& path, const QByteArray& data = "x") {
     QDir().mkpath(QFileInfo(path).absolutePath());
     QFile f(path);
-    f.open(QIODevice::WriteOnly);
+    // open() est [[nodiscard]] : sans fichier, les CHECK qui suivent echouent d'eux-memes.
+    if (!f.open(QIODevice::WriteOnly))
+        return;
     f.write(data);
 }
 
